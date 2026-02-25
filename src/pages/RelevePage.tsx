@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Camera, ScanBarcode, Keyboard, MapPin, AlertTriangle, CheckCircle2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Camera, ScanBarcode, Keyboard, MapPin, AlertTriangle, CheckCircle2, ChevronDown, X } from 'lucide-react';
+import { takePhoto, getCurrentPosition } from '@/services/native';
 
 export default function RelevePage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,9 @@ export default function RelevePage() {
   const [method, setMethod] = useState<'manuel' | 'scanner' | 'radio'>(existingReleve?.methode || 'manuel');
   const [showAnomalies, setShowAnomalies] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(existingReleve?.photoUri || null);
+  const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
 
   const ancienIndex = abo?.VAL_IDX_CSO_ANC_ABO || 0;
   const newIndex = parseInt(indexValue) || 0;
@@ -51,6 +55,9 @@ export default function RelevePage() {
       VAL_IDX_NOUVEAU: newIndex || undefined,
       COD_ANO_RLV: selectedAnomaly || undefined,
       commentaire: comment || undefined,
+      photoUri: photoUri || undefined,
+      latitude: gpsCoords?.latitude,
+      longitude: gpsCoords?.longitude,
       dateReleve: new Date().toISOString(),
       synced: false,
       methode: method,
@@ -62,9 +69,20 @@ export default function RelevePage() {
 
   const handleScanSimulation = () => {
     setMethod('scanner');
-    // Simulate barcode scan result - random index increment
     const simulatedIndex = ancienIndex + Math.floor(Math.random() * 150) + 10;
     setIndexValue(simulatedIndex.toString());
+  };
+
+  const handleTakePhoto = async () => {
+    const uri = await takePhoto();
+    if (uri) setPhotoUri(uri);
+  };
+
+  const handleGetGPS = async () => {
+    setGpsLoading(true);
+    const coords = await getCurrentPosition();
+    if (coords) setGpsCoords(coords);
+    setGpsLoading(false);
   };
 
   return (
@@ -183,11 +201,29 @@ export default function RelevePage() {
           )}
         </motion.div>
 
-        {/* Photo */}
-        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.25 }}>
-          <button className="w-full bg-card rounded-xl shadow-card p-4 border border-border border-dashed flex items-center justify-center gap-3 active:scale-[0.98] transition-transform">
-            <Camera className="w-6 h-6 text-primary" />
-            <span className="text-sm font-medium text-primary">Prendre une photo</span>
+        {/* Photo & GPS */}
+        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.25 }} className="space-y-2">
+          {photoUri ? (
+            <div className="relative bg-card rounded-xl shadow-card border border-border overflow-hidden">
+              <img src={photoUri} alt="Photo compteur" className="w-full h-40 object-cover" />
+              <button onClick={() => setPhotoUri(null)} className="absolute top-2 right-2 w-7 h-7 bg-foreground/60 rounded-full flex items-center justify-center">
+                <X className="w-4 h-4 text-primary-foreground" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={handleTakePhoto} className="w-full bg-card rounded-xl shadow-card p-4 border border-border border-dashed flex items-center justify-center gap-3 active:scale-[0.98] transition-transform">
+              <Camera className="w-6 h-6 text-primary" />
+              <span className="text-sm font-medium text-primary">Prendre une photo</span>
+            </button>
+          )}
+          <button onClick={handleGetGPS} disabled={gpsLoading} className="w-full bg-card rounded-xl shadow-card p-3 border border-border flex items-center justify-between active:scale-[0.98] transition-transform">
+            <div className="flex items-center gap-2">
+              <MapPin className={`w-4 h-4 ${gpsCoords ? 'text-success' : 'text-primary'}`} />
+              <span className="text-sm font-medium text-foreground">
+                {gpsLoading ? 'Localisation...' : gpsCoords ? `${gpsCoords.latitude.toFixed(5)}, ${gpsCoords.longitude.toFixed(5)}` : 'Capturer la position GPS'}
+              </span>
+            </div>
+            {gpsCoords && <CheckCircle2 className="w-4 h-4 text-success" />}
           </button>
         </motion.div>
 
