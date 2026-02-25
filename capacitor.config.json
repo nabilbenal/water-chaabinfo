@@ -1,0 +1,17 @@
+{
+  "appId": "app.lovable.3a09cb4d47944122821eea1465d0326d",
+  "appName": "Relève d'Eau Mobile",
+  "webDir": "dist",
+  "server": {
+    "url": "https://3a09cb4d-4794-4122-821e-ea1465d0326d.lovableproject.com?forceHideBadge=true",
+    "cleartext": true
+  },
+  "plugins": {
+    "Camera": {
+      "permissions": ["camera", "photos"]
+    },
+    "Geolocation": {
+      "permissions": ["location"]
+    }
+  }
+}
