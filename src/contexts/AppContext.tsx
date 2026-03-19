@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import type { Abonne, Tournee, AnomalieReleve, AnnulationReleve, ReleveLocal, LoadedData, DashboardStats, Agent } from '@/types/water';
-import { mockLoadedData, mockAgent } from '@/data/mockData';
+import type { Abonne, Tournee, AnomalieReleve, AnnulationReleve, ReleveLocal, LoadedData, DashboardStats, Agent, ReleveConsommation } from '@/types/water';
+import { mockAgent } from '@/data/mockData';
+import { apiLogin, apiLoadData, apiUnloadData, parseLoadedDataFromJSON, setApiMode, getApiMode, setAuthToken } from '@/services/api';
 
 interface AppContextType {
   // Auth
   isAuthenticated: boolean;
   agent: Agent | null;
-  login: (matricule: string, password: string) => boolean;
+  login: (matricule: string, password: string) => Promise<boolean>;
   logout: () => void;
 
   // Data
@@ -20,9 +21,14 @@ interface AppContextType {
   // Actions
   loadData: () => Promise<void>;
   unloadData: () => Promise<void>;
+  importJSON: (jsonString: string) => void;
   addReleve: (releve: ReleveLocal) => void;
   getAbonneByPDR: (numPntDrt: string) => Abonne | undefined;
   getStats: () => DashboardStats;
+
+  // Config
+  apiMode: 'mock' | 'api';
+  setMode: (mode: 'mock' | 'api') => void;
 
   // Status
   isLoading: boolean;
@@ -41,15 +47,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [lastLoadDate, setLastLoadDate] = useState<string | null>(null);
   const [lastUnloadDate, setLastUnloadDate] = useState<string | null>(null);
+  const [apiMode, setApiModeState] = useState<'mock' | 'api'>('mock');
 
-  const login = useCallback((matricule: string, password: string) => {
-    // Demo login
-    if (matricule && password) {
-      setIsAuthenticated(true);
-      setAgent(mockAgent);
-      return true;
+  const setMode = useCallback((mode: 'mock' | 'api') => {
+    setApiMode(mode);
+    setApiModeState(mode);
+  }, []);
+
+  const login = useCallback(async (matricule: string, password: string) => {
+    try {
+      const response = await apiLogin(matricule, password);
+      if (response.success && response.agent) {
+        setIsAuthenticated(true);
+        setAgent(response.agent as Agent);
+        if (response.token) setAuthToken(response.token);
+        return true;
+      }
+      return false;
+    } catch {
+      // Fallback mode demo
+      if (matricule && password) {
+        setIsAuthenticated(true);
+        setAgent(mockAgent);
+        return true;
+      }
+      return false;
     }
-    return false;
   }, []);
 
   const logout = useCallback(() => {
@@ -59,24 +82,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setReleves([]);
     setLastLoadDate(null);
     setLastUnloadDate(null);
+    setAuthToken(null);
   }, []);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
-    // Simulate server fetch
-    await new Promise(r => setTimeout(r, 1500));
-    setLoadedData(mockLoadedData);
-    setLastLoadDate(new Date().toISOString());
-    setIsLoading(false);
-  }, []);
+    try {
+      const data = await apiLoadData(agent?.tournee);
+      setLoadedData(data);
+      setLastLoadDate(new Date().toISOString());
+    } catch (error) {
+      console.error('Erreur chargement:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [agent]);
 
   const unloadData = useCallback(async () => {
     setIsLoading(true);
-    // Simulate server upload
-    await new Promise(r => setTimeout(r, 1500));
-    setReleves(prev => prev.map(r => ({ ...r, synced: true })));
-    setLastUnloadDate(new Date().toISOString());
-    setIsLoading(false);
+    try {
+      // Convertir les relevés locaux en format CSO_RLV pour le serveur
+      const relevesCSO: ReleveConsommation[] = releves
+        .filter(r => r.VAL_IDX_NOUVEAU !== undefined)
+        .map(r => ({
+          PER_HIS_RLV: new Date().getMonth() < 6 ? 1 : 2,
+          ANN_HIS_RLV: new Date().getFullYear(),
+          NUM_PNT_DRT: r.NUM_PNT_DRT,
+          COD_ANO_RLV: r.COD_ANO_RLV,
+          COD_ANN_RLV: r.COD_ANN_RLV,
+          DAT_RLV_CSO_RLV: r.dateReleve,
+          VAL_IDX_CSO_RLV: r.VAL_IDX_NOUVEAU,
+          CMT_RLR: r.commentaire,
+        }));
+
+      await apiUnloadData(relevesCSO);
+      setReleves(prev => prev.map(r => ({ ...r, synced: true })));
+      setLastUnloadDate(new Date().toISOString());
+    } catch (error) {
+      console.error('Erreur déchargement:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [releves]);
+
+  const importJSON = useCallback((jsonString: string) => {
+    const data = parseLoadedDataFromJSON(jsonString);
+    setLoadedData(data);
+    setLastLoadDate(new Date().toISOString());
   }, []);
 
   const addReleve = useCallback((releve: ReleveLocal) => {
@@ -118,7 +172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadedData, abonnes, tournees,
       anomalies: anomaliesData, annulations: annulationsData,
       releves,
-      loadData, unloadData, addReleve, getAbonneByPDR, getStats,
+      loadData, unloadData, importJSON, addReleve, getAbonneByPDR, getStats,
+      apiMode, setMode,
       isLoading, isDataLoaded: !!loadedData,
       lastLoadDate, lastUnloadDate,
     }}>
