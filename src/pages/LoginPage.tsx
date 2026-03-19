@@ -9,10 +9,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!login(matricule, password)) {
-      setError('Identifiants incorrects');
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const success = await login(matricule, password);
+      if (!success) setError('Identifiants incorrects');
+    } catch {
+      setError('Erreur de connexion au serveur');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
