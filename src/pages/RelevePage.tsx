@@ -4,6 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Camera, ScanBarcode, Keyboard, MapPin, AlertTriangle, CheckCircle2, ChevronDown, X } from 'lucide-react';
 import { takePhoto, getCurrentPosition } from '@/services/native';
+import GPSMap from '@/components/GPSMap';
 
 export default function RelevePage() {
   const { id } = useParams<{ id: string }>();
@@ -225,6 +226,14 @@ export default function RelevePage() {
             </div>
             {gpsCoords && <CheckCircle2 className="w-4 h-4 text-success" />}
           </button>
+          {gpsCoords && (
+            <GPSMap
+              latitude={gpsCoords.latitude}
+              longitude={gpsCoords.longitude}
+              isOk={!selectedAnomaly && validation?.type !== 'error'}
+              label={abo.RAI_SOC_CLI_ABO}
+            />
+          )}
         </motion.div>
 
         {/* Comment */}
