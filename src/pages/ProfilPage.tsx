@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
-import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi } from 'lucide-react';
+import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ProfilPage() {
-  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON } = useApp();
+  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, loadedData } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatDate = (d: string | null) => {
@@ -18,9 +19,18 @@ export default function ProfilPage() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        importJSON(ev.target?.result as string);
+        const jsonStr = ev.target?.result as string;
+        console.log('[Import] Taille fichier:', jsonStr.length, 'caractères');
+        console.log('[Import] Aperçu:', jsonStr.substring(0, 500));
+        importJSON(jsonStr);
+        toast.success('Import réussi', {
+          description: `Fichier "${file.name}" importé avec succès`,
+        });
       } catch (err) {
-        alert('Erreur: fichier JSON invalide');
+        console.error('[Import] Erreur:', err);
+        toast.error('Erreur d\'import', {
+          description: err instanceof Error ? err.message : 'Fichier JSON invalide',
+        });
       }
     };
     reader.readAsText(file);
@@ -69,8 +79,30 @@ export default function ProfilPage() {
           </div>
         </motion.div>
 
+        {/* Résumé données chargées */}
+        {loadedData && (
+          <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
+            className="bg-card rounded-xl shadow-card p-4 border border-success/30 space-y-2">
+            <p className="text-sm font-medium text-foreground flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-success" /> Données chargées
+            </p>
+            <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+              <span>Abonnés: <strong className="text-foreground">{loadedData.abonnes.length}</strong></span>
+              <span>Tournées: <strong className="text-foreground">{loadedData.tournees.length}</strong></span>
+              <span>Compteurs: <strong className="text-foreground">{loadedData.compteurs.length}</strong></span>
+              <span>Anomalies: <strong className="text-foreground">{loadedData.anomalies.length}</strong></span>
+              <span>Consommations: <strong className="text-foreground">{loadedData.consommations.length}</strong></span>
+            </div>
+            {loadedData.abonnes.length === 0 && (
+              <p className="text-xs text-warning flex items-center gap-1 mt-1">
+                <AlertTriangle className="w-3 h-3" /> Aucun abonné trouvé — vérifiez les clés du fichier JSON
+              </p>
+            )}
+          </motion.div>
+        )}
+
         {/* Import JSON */}
-        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
+        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
           <button
             onClick={() => fileInputRef.current?.click()}
