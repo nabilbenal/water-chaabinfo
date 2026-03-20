@@ -4,6 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Camera, ScanBarcode, Keyboard, MapPin, AlertTriangle, CheckCircle2, ChevronDown, X } from 'lucide-react';
 import { takePhoto, getCurrentPosition } from '@/services/native';
+import GPSMap from '@/components/GPSMap';
 
 export default function RelevePage() {
   const { id } = useParams<{ id: string }>();
