@@ -18,11 +18,25 @@ export async function takePhoto(): Promise<string | null> {
 }
 
 export async function getCurrentPosition(): Promise<{ latitude: number; longitude: number } | null> {
+  // Try Capacitor first
   try {
     const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
     return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
   } catch (e) {
-    console.warn('Geolocation not available');
-    return null;
+    console.warn('Capacitor Geolocation not available, trying web fallback');
   }
+
+  // Web browser fallback
+  if ('geolocation' in navigator) {
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        (err) => { console.warn('Web geolocation error:', err.message); resolve(null); },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  }
+
+  console.warn('No geolocation available');
+  return null;
 }
