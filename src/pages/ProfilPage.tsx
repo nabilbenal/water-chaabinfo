@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
-import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi } from 'lucide-react';
+import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ProfilPage() {
-  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON } = useApp();
+  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, loadedData } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatDate = (d: string | null) => {
@@ -18,9 +19,18 @@ export default function ProfilPage() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        importJSON(ev.target?.result as string);
+        const jsonStr = ev.target?.result as string;
+        console.log('[Import] Taille fichier:', jsonStr.length, 'caractères');
+        console.log('[Import] Aperçu:', jsonStr.substring(0, 500));
+        importJSON(jsonStr);
+        toast.success('Import réussi', {
+          description: `Fichier "${file.name}" importé avec succès`,
+        });
       } catch (err) {
-        alert('Erreur: fichier JSON invalide');
+        console.error('[Import] Erreur:', err);
+        toast.error('Erreur d\'import', {
+          description: err instanceof Error ? err.message : 'Fichier JSON invalide',
+        });
       }
     };
     reader.readAsText(file);

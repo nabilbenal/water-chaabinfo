@@ -186,25 +186,78 @@ export async function apiUnloadData(
  * Importe des données JSON (exportées depuis l'outil SDF Windows)
  * Permet de charger un fichier tournee_data.json dans l'application
  */
+/**
+ * Cherche une valeur dans l'objet JSON en testant plusieurs noms de clé possibles
+ */
+function findKey(obj: Record<string, unknown>, ...keys: string[]): unknown[] {
+  for (const key of keys) {
+    // Test exact
+    if (obj[key] !== undefined) return Array.isArray(obj[key]) ? obj[key] as unknown[] : [];
+    // Test case-insensitive
+    const found = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
+    if (found && obj[found] !== undefined) return Array.isArray(obj[found]) ? obj[found] as unknown[] : [];
+  }
+  return [];
+}
+
 export function parseLoadedDataFromJSON(jsonString: string): LoadedData {
   try {
     const raw = JSON.parse(jsonString);
 
-    return {
-      abonnes: raw.abo || [],
-      tournees: raw.trn || [],
-      compteurs: raw.apt || [],
-      anomalies: raw.ano_rlv || [],
-      annulations: raw.ann_rlv || [],
-      accessibilites: raw.acb_apt || [],
-      modeles: raw.mdl_apt || [],
-      portes: raw.prt_pnt_drt || [],
-      consommations: raw.cso || [],
-      parametres: raw.par || [],
-      elementsCompteur: raw.elt_apt || [],
-      pointsDroit: raw.pnt_drt || [],
+    // Si le JSON est un tableau direct, on essaie de le traiter comme liste d'abonnés
+    if (Array.isArray(raw)) {
+      console.log('[Import] JSON est un tableau de', raw.length, 'éléments');
+      return {
+        abonnes: raw,
+        tournees: [], compteurs: [], anomalies: [], annulations: [],
+        accessibilites: [], modeles: [], portes: [], consommations: [],
+        parametres: [], elementsCompteur: [], pointsDroit: [],
+      };
+    }
+
+    // Log toutes les clés trouvées pour debug
+    console.log('[Import] Clés du JSON:', Object.keys(raw));
+    console.log('[Import] Tailles:', Object.entries(raw).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.length : typeof v}`).join(', '));
+
+    const data: LoadedData = {
+      abonnes: findKey(raw, 'abo', 'ABO', 'abonnes', 'Abonnes', 'subscribers') as LoadedData['abonnes'],
+      tournees: findKey(raw, 'trn', 'TRN', 'tournees', 'Tournees', 'tours') as LoadedData['tournees'],
+      compteurs: findKey(raw, 'apt', 'APT', 'compteurs', 'Compteurs', 'meters') as LoadedData['compteurs'],
+      anomalies: findKey(raw, 'ano_rlv', 'ANO_RLV', 'anomalies', 'Anomalies') as LoadedData['anomalies'],
+      annulations: findKey(raw, 'ann_rlv', 'ANN_RLV', 'annulations', 'Annulations') as LoadedData['annulations'],
+      accessibilites: findKey(raw, 'acb_apt', 'ACB_APT', 'accessibilites') as LoadedData['accessibilites'],
+      modeles: findKey(raw, 'mdl_apt', 'MDL_APT', 'modeles') as LoadedData['modeles'],
+      portes: findKey(raw, 'prt_pnt_drt', 'PRT_PNT_DRT', 'portes') as LoadedData['portes'],
+      consommations: findKey(raw, 'cso', 'CSO', 'consommations', 'Consommations') as LoadedData['consommations'],
+      parametres: findKey(raw, 'par', 'PAR', 'parametres') as LoadedData['parametres'],
+      elementsCompteur: findKey(raw, 'elt_apt', 'ELT_APT', 'elements') as LoadedData['elementsCompteur'],
+      pointsDroit: findKey(raw, 'pnt_drt', 'PNT_DRT', 'points') as LoadedData['pointsDroit'],
     };
+
+    const totalRecords = Object.values(data).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+    console.log('[Import] Total enregistrements importés:', totalRecords);
+
+    if (totalRecords === 0) {
+      // Dernier recours: essayer de mapper toutes les clés trouvées
+      const keys = Object.keys(raw);
+      console.warn('[Import] Aucune clé reconnue. Clés disponibles:', keys);
+      
+      // Si on trouve des tableaux, les assigner aux premiers champs disponibles
+      const arrays = keys.filter(k => Array.isArray(raw[k]));
+      if (arrays.length > 0) {
+        const fields: (keyof LoadedData)[] = ['abonnes', 'tournees', 'compteurs', 'anomalies', 'annulations', 'consommations'];
+        arrays.forEach((key, i) => {
+          if (i < fields.length) {
+            (data[fields[i]] as unknown[]) = raw[key];
+            console.log(`[Import] Clé "${key}" (${raw[key].length} items) → ${fields[i]}`);
+          }
+        });
+      }
+    }
+
+    return data;
   } catch (error) {
+    console.error('[Import] Erreur parsing JSON:', error);
     throw new Error('Format JSON invalide. Vérifiez le fichier exporté.');
   }
 }
