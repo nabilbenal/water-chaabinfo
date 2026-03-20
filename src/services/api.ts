@@ -202,7 +202,9 @@ function findKey(obj: Record<string, unknown>, ...keys: string[]): unknown[] {
 
 export function parseLoadedDataFromJSON(jsonString: string): LoadedData {
   try {
-    const raw = JSON.parse(jsonString);
+    // Strip UTF-8 BOM if present
+    const cleanString = jsonString.replace(/^\uFEFF/, '');
+    const raw = JSON.parse(cleanString);
 
     // Si le JSON est un tableau direct, on essaie de le traiter comme liste d'abonnés
     if (Array.isArray(raw)) {

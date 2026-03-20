@@ -188,7 +188,7 @@ export default function RelevePage() {
               >
                 Aucune anomalie
               </button>
-              {anomalies.filter(a => a.FLG_ANO_RLV).map(ano => (
+              {anomalies.filter(a => a.COD_ANO_RLV !== '00' && a.COD_ANO_RLV !== '01').map(ano => (
                 <button
                   key={ano.COD_ANO_RLV}
                   onClick={() => { setSelectedAnomaly(ano.COD_ANO_RLV); setShowAnomalies(false); }}
