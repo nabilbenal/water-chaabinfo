@@ -102,12 +102,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const unloadData = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Utiliser la période et l'année de la tournée chargée
+      const currentTournee = loadedData?.tournees?.[0];
+      const period = currentTournee?.PER_TRN || (new Date().getMonth() < 6 ? 1 : 2);
+      const year = currentTournee?.ANN_TRN || new Date().getFullYear();
+
       // Convertir les relevés locaux en format CSO_RLV pour le serveur
+      // Inclure les relevés avec index OU avec anomalie
       const relevesCSO: ReleveConsommation[] = releves
-        .filter(r => r.VAL_IDX_NOUVEAU !== undefined)
+        .filter(r => !r.synced && (r.VAL_IDX_NOUVEAU !== undefined || r.COD_ANO_RLV))
         .map(r => ({
-          PER_HIS_RLV: new Date().getMonth() < 6 ? 1 : 2,
-          ANN_HIS_RLV: new Date().getFullYear(),
+          PER_HIS_RLV: period,
+          ANN_HIS_RLV: year,
           NUM_PNT_DRT: r.NUM_PNT_DRT,
           COD_ANO_RLV: r.COD_ANO_RLV,
           COD_ANN_RLV: r.COD_ANN_RLV,
@@ -116,7 +122,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           CMT_RLR: r.commentaire,
         }));
 
-      await apiUnloadData(relevesCSO);
+      // Collecter les photos des relevés non synchronisés
+      const photos = releves
+        .filter(r => !r.synced && r.photoUri)
+        .map(r => ({
+          NUM_PNT_DRT: r.NUM_PNT_DRT,
+          uri: r.photoUri!,
+          timestamp: r.dateReleve,
+        }));
+
+      await apiUnloadData(relevesCSO, photos);
       setReleves(prev => prev.map(r => ({ ...r, synced: true })));
       setLastUnloadDate(new Date().toISOString());
     } catch (error) {
@@ -125,7 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [releves]);
+  }, [releves, loadedData]);
 
   const importJSON = useCallback((jsonString: string) => {
     const data = parseLoadedDataFromJSON(jsonString);
