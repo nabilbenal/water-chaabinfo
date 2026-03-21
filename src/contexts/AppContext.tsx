@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Abonne, Tournee, AnomalieReleve, AnnulationReleve, ReleveLocal, LoadedData, DashboardStats, Agent, ReleveConsommation } from '@/types/water';
 import { mockAgent } from '@/data/mockData';
 import { apiLogin, apiLoadData, apiUnloadData, parseLoadedDataFromJSON, setApiMode, getApiMode, setAuthToken } from '@/services/api';
+import {
+  saveLoadedData, getLoadedData, clearLoadedData,
+  saveReleves, getReleves,
+  saveLastLoadDate, getLastLoadDate,
+  saveLastUnloadDate, getLastUnloadDate,
+  clearAllData,
+} from '@/services/persistence';
 
 interface AppContextType {
   // Auth
@@ -48,6 +55,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [lastLoadDate, setLastLoadDate] = useState<string | null>(null);
   const [lastUnloadDate, setLastUnloadDate] = useState<string | null>(null);
   const [apiMode, setApiModeState] = useState<'mock' | 'api'>('mock');
+  const [hydrated, setHydrated] = useState(false);
+
+  // Restore data from IndexedDB on mount
+  useEffect(() => {
+    async function hydrate() {
+      try {
+        const [storedData, storedReleves, storedLoadDate, storedUnloadDate] = await Promise.all([
+          getLoadedData(),
+          getReleves(),
+          getLastLoadDate(),
+          getLastUnloadDate(),
+        ]);
+        if (storedData) setLoadedData(storedData);
+        if (storedReleves.length > 0) setReleves(storedReleves);
+        if (storedLoadDate) setLastLoadDate(storedLoadDate);
+        if (storedUnloadDate) setLastUnloadDate(storedUnloadDate);
+      } catch (e) {
+        console.warn('Erreur restauration IndexedDB:', e);
+      } finally {
+        setHydrated(true);
+      }
+    }
+    hydrate();
+  }, []);
+
+  // Persist loadedData when it changes
+  useEffect(() => {
+    if (!hydrated) return;
+    if (loadedData) {
+      saveLoadedData(loadedData).catch(console.warn);
+    } else {
+      clearLoadedData().catch(console.warn);
+    }
+  }, [loadedData, hydrated]);
+
+  // Persist releves when they change
+  useEffect(() => {
+    if (!hydrated) return;
+    saveReleves(releves).catch(console.warn);
+  }, [releves, hydrated]);
+
+  // Persist dates
+  useEffect(() => {
+    if (!hydrated) return;
+    saveLastLoadDate(lastLoadDate).catch(console.warn);
+  }, [lastLoadDate, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveLastUnloadDate(lastUnloadDate).catch(console.warn);
+  }, [lastUnloadDate, hydrated]);
 
   const setMode = useCallback((mode: 'mock' | 'api') => {
     setApiMode(mode);
@@ -83,6 +141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLastLoadDate(null);
     setLastUnloadDate(null);
     setAuthToken(null);
+    clearAllData().catch(console.warn);
   }, []);
 
   const loadData = useCallback(async () => {
