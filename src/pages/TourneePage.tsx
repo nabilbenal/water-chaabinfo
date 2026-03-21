@@ -31,19 +31,7 @@ export default function TourneePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
-  if (!isDataLoaded) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center pb-24">
-        <p className="text-muted-foreground">Veuillez charger les données d'abord</p>
-      </div>
-    );
-  }
-
-  const currentTournee = tournees[0];
-  const periodLabel = currentTournee?.PER_TRN ? `P${currentTournee.PER_TRN}` : '';
-  const yearLabel = currentTournee?.ANN_TRN || '';
-
-  // Filter abonnes by search query
+  // Filter abonnes by search query (hook must be before early return)
   const filteredAbonnes = useMemo(() => {
     if (!searchQuery.trim()) return abonnes;
     const q = searchQuery.toLowerCase().trim();
@@ -58,6 +46,18 @@ export default function TourneePage() {
       );
     });
   }, [searchQuery, abonnes]);
+
+  if (!isDataLoaded) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center pb-24">
+        <p className="text-muted-foreground">Veuillez charger les données d'abord</p>
+      </div>
+    );
+  }
+
+  const currentTournee = tournees[0];
+  const periodLabel = currentTournee?.PER_TRN ? `P${currentTournee.PER_TRN}` : '';
+  const yearLabel = currentTournee?.ANN_TRN || '';
 
   // Group by street
   const streets = filteredAbonnes.reduce((acc, abo) => {
