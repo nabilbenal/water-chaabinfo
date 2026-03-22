@@ -20,6 +20,15 @@ function createStatusIcon(done: boolean) {
   });
 }
 
+// Generate a deterministic pseudo-random offset from a string seed
+function seedOffset(seed: string): [number, number] {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
+  const lat = ((h & 0xffff) / 0xffff - 0.5) * 0.06;
+  const lng = (((h >> 16) & 0xffff) / 0xffff - 0.5) * 0.08;
+  return [CONSTANTINE_CENTER[0] + lat, CONSTANTINE_CENTER[1] + lng];
+}
+
 interface MeterStatusMapProps {
   abonnes: Abonne[];
   releves: ReleveLocal[];
@@ -29,20 +38,24 @@ interface MeterStatusMapProps {
 
 export default function MeterStatusMap({ abonnes, releves, height = 220, className = '' }: MeterStatusMapProps) {
   const markers = useMemo(() => {
-    return abonnes
-      .filter(abo => abo.GPS_LNG_ABO && abo.GPS_LAT_ABO)
-      .map(abo => {
-        const releve = releves.find(r => r.NUM_PNT_DRT === abo.NUM_PNT_DRT_ABO);
-        const done = !!releve?.VAL_IDX_NOUVEAU;
-        return { abo, done };
-      });
+    return abonnes.map(abo => {
+      const releve = releves.find(r => r.NUM_PNT_DRT === abo.NUM_PNT_DRT_ABO);
+      const done = !!releve?.VAL_IDX_NOUVEAU;
+      // Use releve GPS if available, otherwise generate deterministic position
+      const lat = releve?.latitude;
+      const lng = releve?.longitude;
+      const pos: [number, number] = lat && lng ? [lat, lng] : seedOffset(abo.NUM_PNT_DRT_ABO);
+      return { abo, done, pos };
+    });
   }, [abonnes, releves]);
 
   const doneCount = markers.filter(m => m.done).length;
   const pendingCount = markers.length - doneCount;
 
+  if (markers.length === 0) return null;
+
   return (
-    <div className={`rounded-xl overflow-hidden border border-border shadow-card ${className}`} style={{ height }}>
+    <div className={`relative rounded-xl overflow-hidden border border-border shadow-card ${className}`} style={{ height }}>
       <MapContainer
         center={CONSTANTINE_CENTER}
         zoom={13}
@@ -51,12 +64,8 @@ export default function MeterStatusMap({ abonnes, releves, height = 220, classNa
         attributionControl={false}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {markers.map(({ abo, done }) => (
-          <Marker
-            key={abo.NUM_PNT_DRT_ABO}
-            position={[abo.GPS_LAT_ABO!, abo.GPS_LNG_ABO!]}
-            icon={createStatusIcon(done)}
-          >
+        {markers.map(({ abo, done, pos }) => (
+          <Marker key={abo.NUM_PNT_DRT_ABO} position={pos} icon={createStatusIcon(done)}>
             <Popup>
               <div className="text-xs">
                 <p className="font-bold">{abo.RAI_SOC_CLI_ABO}</p>
@@ -69,7 +78,6 @@ export default function MeterStatusMap({ abonnes, releves, height = 220, classNa
           </Marker>
         ))}
       </MapContainer>
-      {/* Legend */}
       <div className="absolute bottom-2 left-2 z-[1000] bg-card/90 backdrop-blur-sm rounded-lg px-2.5 py-1.5 flex items-center gap-3 text-[10px] border border-border">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success inline-block" /> Relevé ({doneCount})</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-destructive inline-block" /> En attente ({pendingCount})</span>
