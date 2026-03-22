@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import MeterStatusMap from '@/components/MeterStatusMap';
 
 export default function HistoriquePage() {
   const { releves } = useApp();
