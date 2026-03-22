@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MapErrorBoundary from './MapErrorBoundary';
 
 // Fix default marker icon issue with webpack/vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Abonne, ReleveLocal } from '@/types/water';
+import MapErrorBoundary from './MapErrorBoundary';
 
 const CONSTANTINE_CENTER: [number, number] = [36.365, 6.615];
 
