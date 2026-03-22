@@ -7,6 +7,7 @@ import GPSMap from '@/components/GPSMap';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MapErrorBoundary from '@/components/MapErrorBoundary';
 
 function createStatusIcon(done: boolean, hasAnomaly: boolean) {
   const color = hasAnomaly ? '#f59e0b' : done ? '#22c55e' : '#ef4444';
