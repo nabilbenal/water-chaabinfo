@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MapErrorBoundary from './MapErrorBoundary';
 
 // Fix default marker icon issue with webpack/vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -38,18 +39,20 @@ export default function GPSMap({ latitude, longitude, isOk, label }: GPSMapProps
   const icon = createColoredIcon(isOk ? 'green' : 'red');
 
   return (
-    <div className="rounded-xl overflow-hidden border border-border shadow-card" style={{ height: 200 }}>
-      <MapContainer
-        center={[latitude, longitude]}
-        zoom={16}
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={false}
-        attributionControl={false}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Marker position={[latitude, longitude]} icon={icon} />
-        <RecenterMap lat={latitude} lng={longitude} />
-      </MapContainer>
-    </div>
+    <MapErrorBoundary height={200}>
+      <div className="rounded-xl overflow-hidden border border-border shadow-card" style={{ height: 200 }}>
+        <MapContainer
+          center={[latitude, longitude]}
+          zoom={16}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={false}
+          attributionControl={false}
+        >
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <Marker position={[latitude, longitude]} icon={icon} />
+          <RecenterMap lat={latitude} lng={longitude} />
+        </MapContainer>
+      </div>
+    </MapErrorBoundary>
   );
 }

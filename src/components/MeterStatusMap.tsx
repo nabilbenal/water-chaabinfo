@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Abonne, ReleveLocal } from '@/types/water';
+import MapErrorBoundary from './MapErrorBoundary';
 
 const CONSTANTINE_CENTER: [number, number] = [36.365, 6.615];
 
@@ -58,34 +59,36 @@ export default function MeterStatusMap({ abonnes, releves, height = 220, classNa
 
   return (
     <div className={`relative rounded-xl overflow-hidden border border-border shadow-card ${className}`} style={{ height }}>
-      <MapContainer
-        center={CONSTANTINE_CENTER}
-        zoom={13}
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={false}
-        attributionControl={false}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {markers.map(({ abo, done, pos }) => (
-          <Marker key={abo.NUM_PNT_DRT_ABO} position={pos} icon={createStatusIcon(done)}>
-            <Popup>
-              <div className="text-xs">
-                <p className="font-bold">{abo.RAI_SOC_CLI_ABO}</p>
-                <p>{abo.NO_RUE_LIV_ABO} {abo.NOM_RUE_LIV_ABO}</p>
-                <p className={done ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
-                  {done ? '✓ Relevé' : '✗ En attente'}
-                </p>
-                <button
-                  onClick={() => navigate(`/releve/${abo.NUM_PNT_DRT_ABO}`)}
-                  className="mt-1 px-2 py-0.5 bg-primary text-primary-foreground rounded text-[10px] font-medium"
-                >
-                  Ouvrir le relevé →
-                </button>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <MapErrorBoundary height={height}>
+        <MapContainer
+          center={CONSTANTINE_CENTER}
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={false}
+          attributionControl={false}
+        >
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          {markers.map(({ abo, done, pos }) => (
+            <Marker key={abo.NUM_PNT_DRT_ABO} position={pos} icon={createStatusIcon(done)}>
+              <Popup>
+                <div className="text-xs">
+                  <p className="font-bold">{abo.RAI_SOC_CLI_ABO}</p>
+                  <p>{abo.NO_RUE_LIV_ABO} {abo.NOM_RUE_LIV_ABO}</p>
+                  <p className={done ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
+                    {done ? '✓ Relevé' : '✗ En attente'}
+                  </p>
+                  <button
+                    onClick={() => navigate(`/releve/${abo.NUM_PNT_DRT_ABO}`)}
+                    className="mt-1 px-2 py-0.5 bg-primary text-primary-foreground rounded text-[10px] font-medium"
+                  >
+                    Ouvrir le relevé →
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </MapErrorBoundary>
       <div className="absolute bottom-2 left-2 z-[1000] bg-card/90 backdrop-blur-sm rounded-lg px-2.5 py-1.5 flex items-center gap-3 text-[10px] border border-border">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success inline-block" /> Relevé ({doneCount})</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-destructive inline-block" /> En attente ({pendingCount})</span>

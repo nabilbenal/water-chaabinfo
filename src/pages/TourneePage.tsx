@@ -7,6 +7,7 @@ import GPSMap from '@/components/GPSMap';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MapErrorBoundary from '@/components/MapErrorBoundary';
 
 function createStatusIcon(done: boolean, hasAnomaly: boolean) {
   const color = hasAnomaly ? '#f59e0b' : done ? '#22c55e' : '#ef4444';
@@ -153,31 +154,33 @@ export default function TourneePage() {
       {viewMode === 'map' ? (
         <div className="px-4 py-4">
           <div className="rounded-xl overflow-hidden border border-border shadow-card" style={{ height: 500 }}>
-            <MapContainer
-              center={markers.length > 0 ? [markers[0].latitude!, markers[0].longitude!] : CONSTANTINE_CENTER}
-              zoom={markers.length > 0 ? 15 : 13}
-              style={{ height: '100%', width: '100%' }}
-              zoomControl={true}
-              attributionControl={false}
-            >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {markers.map((m) => (
-                <Marker
-                  key={m.NUM_PNT_DRT}
-                  position={[m.latitude!, m.longitude!]}
-                  icon={createStatusIcon(m.isDone, m.hasAnomaly)}
-                  eventHandlers={{ click: () => navigate(`/releve/${m.NUM_PNT_DRT}`) }}
-                >
-                  <Popup>
-                    <div className="text-xs">
-                      <p className="font-bold">{m.abo?.RAI_SOC_CLI_ABO}</p>
-                      <p>{m.abo?.NO_RUE_LIV_ABO} {m.abo?.NOM_RUE_LIV_ABO}</p>
-                      <p className="font-mono mt-1">Idx: {m.VAL_IDX_NOUVEAU ?? '—'}</p>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
+            <MapErrorBoundary height={500}>
+              <MapContainer
+                center={markers.length > 0 ? [markers[0].latitude!, markers[0].longitude!] : CONSTANTINE_CENTER}
+                zoom={markers.length > 0 ? 15 : 13}
+                style={{ height: '100%', width: '100%' }}
+                zoomControl={true}
+                attributionControl={false}
+              >
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                {markers.map((m) => (
+                  <Marker
+                    key={m.NUM_PNT_DRT}
+                    position={[m.latitude!, m.longitude!]}
+                    icon={createStatusIcon(m.isDone, m.hasAnomaly)}
+                    eventHandlers={{ click: () => navigate(`/releve/${m.NUM_PNT_DRT}`) }}
+                  >
+                    <Popup>
+                      <div className="text-xs">
+                        <p className="font-bold">{m.abo?.RAI_SOC_CLI_ABO}</p>
+                        <p>{m.abo?.NO_RUE_LIV_ABO} {m.abo?.NOM_RUE_LIV_ABO}</p>
+                        <p className="font-mono mt-1">Idx: {m.VAL_IDX_NOUVEAU ?? '—'}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+            </MapErrorBoundary>
           </div>
 
           {/* GPS unavailable warning */}
