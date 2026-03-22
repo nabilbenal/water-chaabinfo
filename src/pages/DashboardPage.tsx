@@ -3,6 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Download, Upload, MapPin, AlertTriangle, CheckCircle2, Clock, Droplets, Loader2 } from 'lucide-react';
+import MeterStatusMap from '@/components/MeterStatusMap';
 
 export default function DashboardPage() {
   const { agent, loadData, unloadData, getStats, isLoading, isDataLoaded, lastLoadDate, lastUnloadDate, abonnes, releves } = useApp();
@@ -92,6 +93,18 @@ export default function DashboardPage() {
             </span>
           </button>
         </motion.div>
+
+        {/* Map */}
+        {isDataLoaded && abonnes.length > 0 && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.25 }}
+          >
+            <h2 className="text-base font-semibold text-foreground mb-2">Carte des compteurs</h2>
+            <MeterStatusMap abonnes={abonnes} releves={releves} height={200} />
+          </motion.div>
+        )}
 
         {/* Quick list */}
         {isDataLoaded && (

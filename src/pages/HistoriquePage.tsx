@@ -2,9 +2,10 @@ import React from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import MeterStatusMap from '@/components/MeterStatusMap';
 
 export default function HistoriquePage() {
-  const { releves } = useApp();
+  const { releves, abonnes } = useApp();
 
   const sorted = [...releves].sort((a, b) => new Date(b.dateReleve).getTime() - new Date(a.dateReleve).getTime());
 
@@ -14,6 +15,12 @@ export default function HistoriquePage() {
         <h1 className="text-xl font-bold text-foreground">Historique</h1>
         <p className="text-sm text-muted-foreground">{releves.length} relevé(s) effectué(s)</p>
       </div>
+
+      {abonnes.length > 0 && (
+        <div className="px-4 pt-4">
+          <MeterStatusMap abonnes={abonnes} releves={releves} height={200} />
+        </div>
+      )}
 
       <div className="px-4 py-4">
         {sorted.length === 0 ? (
