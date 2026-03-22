@@ -5,7 +5,7 @@ import { CheckCircle2, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react'
 import MeterStatusMap from '@/components/MeterStatusMap';
 
 export default function HistoriquePage() {
-  const { releves } = useApp();
+  const { releves, abonnes } = useApp();
 
   const sorted = [...releves].sort((a, b) => new Date(b.dateReleve).getTime() - new Date(a.dateReleve).getTime());
 
