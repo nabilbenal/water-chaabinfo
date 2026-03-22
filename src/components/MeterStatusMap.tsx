@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Abonne, ReleveLocal } from '@/types/water';
@@ -37,6 +38,7 @@ interface MeterStatusMapProps {
 }
 
 export default function MeterStatusMap({ abonnes, releves, height = 220, className = '' }: MeterStatusMapProps) {
+  const navigate = useNavigate();
   const markers = useMemo(() => {
     return abonnes.map(abo => {
       const releve = releves.find(r => r.NUM_PNT_DRT === abo.NUM_PNT_DRT_ABO);
@@ -73,6 +75,12 @@ export default function MeterStatusMap({ abonnes, releves, height = 220, classNa
                 <p className={done ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
                   {done ? '✓ Relevé' : '✗ En attente'}
                 </p>
+                <button
+                  onClick={() => navigate(`/releve/${abo.NUM_PNT_DRT_ABO}`)}
+                  className="mt-1 px-2 py-0.5 bg-primary text-primary-foreground rounded text-[10px] font-medium"
+                >
+                  Ouvrir le relevé →
+                </button>
               </div>
             </Popup>
           </Marker>
