@@ -75,6 +75,12 @@ export default function MeterStatusMap({ abonnes, releves, height = 220, classNa
                 <p className={done ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
                   {done ? '✓ Relevé' : '✗ En attente'}
                 </p>
+                <button
+                  onClick={() => navigate(`/releve/${abo.NUM_PNT_DRT_ABO}`)}
+                  className="mt-1 px-2 py-0.5 bg-blue-500 text-white rounded text-[10px] font-medium"
+                >
+                  Ouvrir le relevé →
+                </button>
               </div>
             </Popup>
           </Marker>
