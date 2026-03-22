@@ -38,6 +38,7 @@ interface MeterStatusMapProps {
 }
 
 export default function MeterStatusMap({ abonnes, releves, height = 220, className = '' }: MeterStatusMapProps) {
+  const navigate = useNavigate();
   const markers = useMemo(() => {
     return abonnes.map(abo => {
       const releve = releves.find(r => r.NUM_PNT_DRT === abo.NUM_PNT_DRT_ABO);
