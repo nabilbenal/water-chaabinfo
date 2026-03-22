@@ -16,6 +16,12 @@ export default function HistoriquePage() {
         <p className="text-sm text-muted-foreground">{releves.length} relevé(s) effectué(s)</p>
       </div>
 
+      {abonnes.length > 0 && (
+        <div className="px-4 pt-4">
+          <MeterStatusMap abonnes={abonnes} releves={releves} height={200} />
+        </div>
+      )}
+
       <div className="px-4 py-4">
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
