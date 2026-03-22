@@ -3,6 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Download, Upload, MapPin, AlertTriangle, CheckCircle2, Clock, Droplets, Loader2 } from 'lucide-react';
+import MeterStatusMap from '@/components/MeterStatusMap';
 
 export default function DashboardPage() {
   const { agent, loadData, unloadData, getStats, isLoading, isDataLoaded, lastLoadDate, lastUnloadDate, abonnes, releves } = useApp();
