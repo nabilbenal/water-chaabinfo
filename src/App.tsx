@@ -36,6 +36,7 @@ function AppRoutes() {
         <Route path="/releve/:id" element={<RelevePage />} />
         <Route path="/historique" element={<HistoriquePage />} />
         <Route path="/profil" element={<ProfilPage />} />
+        <Route path="/aide" element={<AidePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <BottomNav />

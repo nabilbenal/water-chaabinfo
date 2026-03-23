@@ -118,7 +118,21 @@ export default function ProfilPage() {
           </button>
         </motion.div>
 
+        {/* Aide & À propos */}
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
+          <button
+            onClick={() => navigate('/aide')}
+            className="w-full bg-card rounded-xl shadow-card p-4 border border-border flex items-center gap-3 active:scale-[0.98] transition-transform"
+          >
+            <HelpCircle className="w-5 h-5 text-primary" />
+            <div className="text-left">
+              <span className="text-sm font-medium text-foreground block">Aide & À propos</span>
+              <span className="text-[11px] text-muted-foreground">Guide d'utilisation, architecture, recommandations</span>
+            </div>
+          </button>
+        </motion.div>
+
+        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
           <button
             onClick={logout}
             className="w-full bg-card rounded-xl shadow-card p-4 border border-border flex items-center gap-3 active:scale-[0.98] transition-transform"
