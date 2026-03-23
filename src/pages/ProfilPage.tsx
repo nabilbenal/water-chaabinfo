@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
-import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle } from 'lucide-react';
+import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ProfilPage() {
