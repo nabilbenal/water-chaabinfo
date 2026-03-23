@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 export default function ProfilPage() {
   const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, loadedData } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   const formatDate = (d: string | null) => {
     if (!d) return 'Jamais';
