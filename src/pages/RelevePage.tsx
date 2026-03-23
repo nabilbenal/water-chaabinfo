@@ -1,10 +1,24 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Camera, ScanBarcode, Keyboard, MapPin, AlertTriangle, CheckCircle2, ChevronDown, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Camera, ScanBarcode, Keyboard, MapPin, AlertTriangle, CheckCircle2, ChevronDown, X, Tag, Plus, MessageSquare } from 'lucide-react';
 import { takePhoto, getCurrentPosition } from '@/services/native';
 import GPSMap from '@/components/GPSMap';
+import type { Annotation } from '@/types/water';
+
+const PREDEFINED_TAGS = [
+  'Compteur endommagé',
+  'Accès difficile',
+  'Fuite visible',
+  'Compteur inversé',
+  'Cadran embué',
+  'Compteur bloqué',
+  'Chien dangereux',
+  'Absent',
+  'Compteur enterré',
+  'Environnement insalubre',
+];
 
 export default function RelevePage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +38,11 @@ export default function RelevePage() {
   const [photoUri, setPhotoUri] = useState<string | null>(existingReleve?.photoUri || null);
   const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
+
+  // Annotations state
+  const [annotations, setAnnotations] = useState<Annotation[]>(existingReleve?.annotations || []);
+  const [showAnnotations, setShowAnnotations] = useState(false);
+  const [customAnnotation, setCustomAnnotation] = useState('');
 
   const ancienIndex = abo?.VAL_IDX_CSO_ANC_ABO || 0;
   const newIndex = parseInt(indexValue) || 0;
@@ -45,6 +64,29 @@ export default function RelevePage() {
     );
   }
 
+  const addAnnotation = (tag: string, texte?: string) => {
+    // Don't add duplicate tags
+    if (annotations.some(a => a.tag === tag && !texte)) return;
+    const annotation: Annotation = {
+      id: `ANN-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      tag,
+      texte,
+      timestamp: new Date().toISOString(),
+    };
+    setAnnotations(prev => [...prev, annotation]);
+  };
+
+  const removeAnnotation = (annId: string) => {
+    setAnnotations(prev => prev.filter(a => a.id !== annId));
+  };
+
+  const handleAddCustom = () => {
+    const text = customAnnotation.trim();
+    if (!text) return;
+    addAnnotation('Note', text);
+    setCustomAnnotation('');
+  };
+
   const handleSave = () => {
     const releve: import('@/types/water').ReleveLocal = {
       id: `RLV-${id}-${Date.now()}`,
@@ -62,6 +104,7 @@ export default function RelevePage() {
       dateReleve: new Date().toISOString(),
       synced: false,
       methode: method,
+      annotations: annotations.length > 0 ? annotations : undefined,
     };
     addReleve(releve);
     setSaved(true);
@@ -200,6 +243,95 @@ export default function RelevePage() {
               ))}
             </motion.div>
           )}
+        </motion.div>
+
+        {/* Annotations */}
+        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.22 }}>
+          <button
+            onClick={() => setShowAnnotations(!showAnnotations)}
+            className="w-full bg-card rounded-xl shadow-card p-3 border border-border flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">
+                Annotations {annotations.length > 0 && `(${annotations.length})`}
+              </span>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showAnnotations ? 'rotate-180' : ''}`} />
+          </button>
+
+          <AnimatePresence>
+            {showAnnotations && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="mt-2 bg-card rounded-xl border border-border p-3 space-y-3 overflow-hidden"
+              >
+                {/* Active annotations */}
+                {annotations.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {annotations.map(ann => (
+                      <span
+                        key={ann.id}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium"
+                      >
+                        {ann.tag}{ann.texte ? `: ${ann.texte}` : ''}
+                        <button onClick={() => removeAnnotation(ann.id)} className="ml-0.5 hover:text-destructive">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Predefined tags */}
+                <div>
+                  <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Tags rapides</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PREDEFINED_TAGS.map(tag => {
+                      const isActive = annotations.some(a => a.tag === tag);
+                      return (
+                        <button
+                          key={tag}
+                          onClick={() => isActive ? removeAnnotation(annotations.find(a => a.tag === tag)!.id) : addAnnotation(tag)}
+                          className={`px-2 py-1 rounded-full text-xs font-medium transition-all ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground hover:bg-accent'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom annotation */}
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <MessageSquare className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={customAnnotation}
+                      onChange={e => setCustomAnnotation(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAddCustom()}
+                      placeholder="Note personnalisée..."
+                      className="w-full h-8 pl-8 pr-3 rounded-lg border border-border bg-background text-foreground text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddCustom}
+                    disabled={!customAnnotation.trim()}
+                    className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Photo & GPS */}
