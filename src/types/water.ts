@@ -192,6 +192,14 @@ export interface ReleveLocal {
   dateReleve: string;
   synced: boolean;
   methode: 'manuel' | 'scanner' | 'radio';
+  annotations?: Annotation[];
+}
+
+export interface Annotation {
+  id: string;
+  tag: string;
+  texte?: string;
+  timestamp: string;
 }
 
 export interface PhotoReleve {
