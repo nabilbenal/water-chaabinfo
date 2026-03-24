@@ -164,23 +164,129 @@ export default function AidePage() {
         {/* Installation */}
         <CollapsibleSection icon={<Download className="w-5 h-5 text-info" />} title="Installation & déploiement" delay={0.3}>
           <SubTitle>Prérequis</SubTitle>
-          <BulletItem>Node.js ≥ 18</BulletItem>
+          <BulletItem>Node.js ≥ 18 et npm</BulletItem>
           <BulletItem>Android Studio (pour build Android)</BulletItem>
           <BulletItem>Xcode (pour build iOS, macOS uniquement)</BulletItem>
+          <BulletItem>Un serveur ERP accessible avec les endpoints WS configurés</BulletItem>
 
-          <SubTitle>Installation</SubTitle>
+          <SubTitle>1. Cloner et installer</SubTitle>
           <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
             <p>git clone &lt;URL_DU_DEPOT&gt;</p>
-            <p>cd &lt;NOM_DU_PROJET&gt;</p>
+            <p>cd releve-eau-mobile</p>
             <p>npm install</p>
-            <p>npm run dev</p>
           </div>
 
-          <SubTitle>Build mobile</SubTitle>
+          <SubTitle>2. Configuration du serveur WS</SubTitle>
+          <p>Créez un fichier <strong className="text-foreground">.env</strong> à la racine du projet :</p>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>VITE_API_BASE_URL=http://&lt;IP_SERVEUR&gt;:&lt;PORT&gt;</p>
+            <p># Exemple : http://192.168.1.100:8080</p>
+          </div>
+          <p className="mt-1">Cette URL est utilisée pour tous les appels REST (authentification, chargement, déchargement).</p>
+
+          <SubTitle>3. Lancer en développement</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>npm run dev</p>
+            <p># L'app est accessible sur http://localhost:5173</p>
+          </div>
+
+          <SubTitle>4. Build de production</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>npm run build          # Génère le dossier dist/</p>
+          </div>
+
+          <SubTitle>5. Build mobile (APK Android)</SubTitle>
           <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
             <p>npm run build</p>
             <p>npx cap sync</p>
-            <p>npx cap open android</p>
+            <p>npx cap open android   # Ouvre Android Studio</p>
+          </div>
+          <BulletItem>Dans Android Studio : <strong className="text-foreground">Build → Build Bundle(s) / APK(s) → Build APK(s)</strong></BulletItem>
+          <BulletItem>L'APK signé se trouve dans <code className="text-foreground bg-muted px-1 rounded">android/app/build/outputs/apk/</code></BulletItem>
+          <BulletItem>Pour un APK de release, configurez la clé de signature dans <code className="text-foreground bg-muted px-1 rounded">build.gradle</code></BulletItem>
+
+          <SubTitle>6. Déploiement sur appareil</SubTitle>
+          <BulletItem>Transférez l'APK par câble USB, email ou partage réseau</BulletItem>
+          <BulletItem>Activez « Sources inconnues » dans les paramètres Android pour l'installer</BulletItem>
+          <BulletItem>L'app fonctionne en mode hors-ligne après installation</BulletItem>
+        </CollapsibleSection>
+
+        {/* Chargement & Déchargement WS */}
+        <CollapsibleSection icon={<Globe className="w-5 h-5 text-primary" />} title="Chargement & déchargement (serveur WS)" delay={0.32}>
+          <SubTitle>Architecture de communication</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-3 font-mono text-[10px] leading-relaxed text-foreground">
+            <p>┌──────────────┐    REST/JSON     ┌──────────────┐</p>
+            <p>│  App Mobile  │ ◄──────────────► │ Serveur ERP  │</p>
+            <p>│  (Capacitor) │                  │  (Web Service)│</p>
+            <p>└──────────────┘                  └──────────────┘</p>
+          </div>
+          <p className="mt-2">L'application communique avec le serveur ERP via des <strong className="text-foreground">API REST en JSON</strong>. L'URL de base est configurable via la variable d'environnement <code className="text-foreground bg-muted px-1 rounded">VITE_API_BASE_URL</code>.</p>
+
+          <SubTitle>🔐 Étape 1 — Authentification</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>POST /api/auth/login</p>
+            <p>Body: {"{"} "matricule": "AG001", "password": "****" {"}"}</p>
+          </div>
+          <BulletItem>Retourne un <strong className="text-foreground">token JWT</strong> utilisé pour sécuriser les appels suivants</BulletItem>
+          <BulletItem>Le token est stocké en mémoire (pas de persistance) et envoyé dans le header <code className="text-foreground bg-muted px-1 rounded">Authorization: Bearer &lt;token&gt;</code></BulletItem>
+          <BulletItem>En cas d'échec serveur, le <strong className="text-foreground">mode démo</strong> est activé automatiquement</BulletItem>
+
+          <SubTitle>📥 Étape 2 — Chargement (téléchargement des tournées)</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>GET /api/releve/charger</p>
+            <p>Header: Authorization: Bearer &lt;token&gt;</p>
+          </div>
+          <p className="mt-1">Le serveur retourne un <strong className="text-foreground">JSON structuré</strong> contenant :</p>
+          <BulletItem><strong className="text-foreground">Tournées (TRN)</strong> : période, année, code secteur, ordre de passage</BulletItem>
+          <BulletItem><strong className="text-foreground">Abonnés (ABO)</strong> : numéro point de droit, nom, adresse, coordonnées GPS</BulletItem>
+          <BulletItem><strong className="text-foreground">Compteurs (CPT)</strong> : numéro, calibre, marque, ancien index</BulletItem>
+          <BulletItem><strong className="text-foreground">Anomalies (ANO_RLV)</strong> : codes et libellés des anomalies possibles</BulletItem>
+          <BulletItem><strong className="text-foreground">Annulations (ANN_RLV)</strong> : motifs d'annulation de relevé</BulletItem>
+          <BulletItem><strong className="text-foreground">Consommations (CSO_RLV)</strong> : historique des consommations précédentes</BulletItem>
+          <p className="mt-1">Les données sont stockées dans <strong className="text-foreground">IndexedDB</strong> pour un accès hors-ligne immédiat.</p>
+
+          <SubTitle>📤 Étape 3 — Déchargement (envoi des relevés)</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>POST /api/releve/decharger</p>
+            <p>Header: Authorization: Bearer &lt;token&gt;</p>
+            <p>Body: {"{"} "releves": [...], "photos": [...] {"}"}</p>
+          </div>
+          <p className="mt-1">Chaque relevé envoyé contient :</p>
+          <BulletItem><strong className="text-foreground">PER_HIS_RLV / ANN_HIS_RLV</strong> : période et année de la tournée</BulletItem>
+          <BulletItem><strong className="text-foreground">NUM_PNT_DRT</strong> : numéro du point de droit (identifiant abonné)</BulletItem>
+          <BulletItem><strong className="text-foreground">VAL_IDX_CSO_RLV</strong> : nouvel index du compteur</BulletItem>
+          <BulletItem><strong className="text-foreground">COD_ANO_RLV</strong> : code anomalie (si signalée)</BulletItem>
+          <BulletItem><strong className="text-foreground">COD_ANN_RLV</strong> : code annulation (si annulé)</BulletItem>
+          <BulletItem><strong className="text-foreground">DAT_RLV_CSO_RLV</strong> : date et heure du relevé</BulletItem>
+          <BulletItem><strong className="text-foreground">CMT_RLR</strong> : commentaire de l'agent</BulletItem>
+          <p className="mt-1">Les <strong className="text-foreground">photos</strong> sont envoyées séparément avec le numéro de point de droit et le timestamp.</p>
+
+          <SubTitle>📊 Réponse du serveur</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>{"{"}</p>
+            <p>  "success": true,</p>
+            <p>  "acceptedCount": 45,</p>
+            <p>  "rejectedCount": 2,</p>
+            <p>  "message": "Déchargement terminé"</p>
+            <p>{"}"}</p>
+          </div>
+          <BulletItem>Les relevés acceptés sont marqués <strong className="text-foreground">synced = true</strong> localement</BulletItem>
+          <BulletItem>En cas d'erreur réseau, les relevés restent en local et peuvent être renvoyés</BulletItem>
+
+          <SubTitle>⚡ Alternative : Import JSON local</SubTitle>
+          <p>Si le serveur WS n'est pas accessible, vous pouvez charger les données depuis un <strong className="text-foreground">fichier JSON</strong> :</p>
+          <BulletItem>Allez dans <strong className="text-foreground">Profil → Importer JSON</strong></BulletItem>
+          <BulletItem>Le fichier doit respecter la structure attendue (tournées, abonnés, compteurs…)</BulletItem>
+          <BulletItem>Le parseur est robuste : insensible à la casse, gère le BOM UTF-8</BulletItem>
+          <BulletItem>Idéal pour les tests ou quand le réseau n'est pas disponible</BulletItem>
+
+          <SubTitle>🔄 Flux complet</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-3 font-mono text-[10px] leading-relaxed text-foreground">
+            <p>1. 🔐 Login → Token JWT</p>
+            <p>2. 📥 Charger → Tournées + Abonnés en local</p>
+            <p>3. 📝 Terrain → Saisie des relevés (hors-ligne)</p>
+            <p>4. 📤 Décharger → Envoi au serveur ERP</p>
+            <p>5. ✅ Confirmation → Relevés marqués synced</p>
           </div>
         </CollapsibleSection>
 
