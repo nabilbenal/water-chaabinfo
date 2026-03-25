@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download, Upload, MapPin, AlertTriangle, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { Download, Upload, MapPin, AlertTriangle, CheckCircle2, Clock, Droplets, Loader2 } from 'lucide-react';
 import MeterStatusMap from '@/components/MeterStatusMap';
 import logoSeaco from '@/assets/logo-seaco.png';
 
