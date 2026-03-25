@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { Droplets } from 'lucide-react';
+import logoSeaco from '@/assets/logo-seaco.png';
 import { motion } from 'framer-motion';
 
 export default function LoginPage() {
