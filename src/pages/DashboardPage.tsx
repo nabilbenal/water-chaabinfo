@@ -28,7 +28,7 @@ export default function DashboardPage() {
             <p className="text-primary-foreground/70 text-sm">Bonjour,</p>
             <h1 className="text-xl font-bold text-primary-foreground">{agent?.prenom} {agent?.nom}</h1>
           </div>
-          <img src={logoSeaco} alt="SEACO" className="h-10 rounded-lg bg-primary-foreground/10 backdrop-blur-sm p-1" />
+          <img src={logoSeaco} alt="SEACO" className="h-10 w-10 rounded-full bg-primary-foreground/10 backdrop-blur-sm object-cover" />
           <div className="flex items-center gap-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full px-3 py-1.5">
             <Droplets className="w-4 h-4 text-primary-foreground" />
             <span className="text-xs font-medium text-primary-foreground">TRN {agent?.tournee}</span>
