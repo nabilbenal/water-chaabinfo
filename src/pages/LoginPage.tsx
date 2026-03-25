@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import logoSeaco from '@/assets/logo-seaco.png';
+import logoSeaco from '@/assets/logo-seaco-round.png';
 import { motion } from 'framer-motion';
 
 export default function LoginPage() {
@@ -34,7 +34,7 @@ export default function LoginPage() {
         className="w-full max-w-sm"
       >
         <div className="flex flex-col items-center mb-8">
-          <img src={logoSeaco} alt="SEACO Logo" className="h-20 rounded-2xl bg-card/20 backdrop-blur-sm p-2 mb-4" />
+          <img src={logoSeaco} alt="SEACO Logo" className="h-20 w-20 rounded-full bg-card/20 backdrop-blur-sm object-cover shadow-elevated mb-4" />
           <h1 className="text-2xl font-bold text-primary-foreground">Relève d'Eau</h1>
           <p className="text-primary-foreground/70 text-sm mt-1">Application de relève des compteurs</p>
         </div>
