@@ -1,5 +1,5 @@
 import { get, set, del, createStore } from 'idb-keyval';
-import type { LoadedData, ReleveLocal } from '@/types/water';
+import type { LoadedData, ReleveLocal, Agent } from '@/types/water';
 
 // Store dédié pour isoler les données de l'app
 const appStore = createStore('water-releve-db', 'app-store');
@@ -9,8 +9,27 @@ const KEYS = {
   RELEVES: 'releves',
   LAST_LOAD_DATE: 'lastLoadDate',
   LAST_UNLOAD_DATE: 'lastUnloadDate',
-  AUTH_AGENT: 'authAgent',
+  AUTH_SESSION: 'authSession',
 } as const;
+
+// --- Auth Session ---
+export interface AuthSession {
+  agent: Agent;
+  token: string | null;
+  expiresAt?: string;
+}
+
+export async function saveAuthSession(session: AuthSession): Promise<void> {
+  await set(KEYS.AUTH_SESSION, session, appStore);
+}
+
+export async function getAuthSession(): Promise<AuthSession | null> {
+  return (await get<AuthSession>(KEYS.AUTH_SESSION, appStore)) ?? null;
+}
+
+export async function clearAuthSession(): Promise<void> {
+  await del(KEYS.AUTH_SESSION, appStore);
+}
 
 // --- LoadedData ---
 export async function saveLoadedData(data: LoadedData): Promise<void> {
@@ -58,6 +77,6 @@ export async function clearAllData(): Promise<void> {
     del(KEYS.RELEVES, appStore),
     del(KEYS.LAST_LOAD_DATE, appStore),
     del(KEYS.LAST_UNLOAD_DATE, appStore),
-    del(KEYS.AUTH_AGENT, appStore),
+    del(KEYS.AUTH_SESSION, appStore),
   ]);
 }

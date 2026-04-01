@@ -2,21 +2,29 @@ import React, { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import logoSeaco from '@/assets/logo-seaco-round.png';
 import { motion } from 'framer-motion';
+import { loginSchema } from '@/lib/validation';
 
 export default function LoginPage() {
   const { login } = useApp();
   const [matricule, setMatricule] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError('');
+
+    // Validate inputs with Zod
+    const result = loginSchema.safeParse({ matricule, password });
+    if (!result.success) {
+      setError(result.error.errors[0].message);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const success = await login(matricule, password);
+      const success = await login(result.data.matricule, result.data.password);
       if (!success) setError('Identifiants incorrects');
     } catch {
       setError('Erreur de connexion au serveur');
@@ -49,6 +57,7 @@ export default function LoginPage() {
                 value={matricule}
                 onChange={e => setMatricule(e.target.value)}
                 placeholder="RLV-2024-042"
+                maxLength={50}
                 className="w-full h-12 px-4 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
@@ -59,15 +68,17 @@ export default function LoginPage() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
+                maxLength={100}
                 className="w-full h-12 px-4 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
             {error && <p className="text-destructive text-sm">{error}</p>}
             <button
               type="submit"
-              className="w-full h-12 rounded-lg bg-gradient-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition-transform"
+              disabled={isSubmitting}
+              className="w-full h-12 rounded-lg bg-gradient-primary text-primary-foreground font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-60"
             >
-              Se connecter
+              {isSubmitting ? 'Connexion...' : 'Se connecter'}
             </button>
           </form>
           <p className="text-xs text-muted-foreground text-center mt-4">
