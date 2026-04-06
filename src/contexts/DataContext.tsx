@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type { Abonne, Tournee, AnomalieReleve, AnnulationReleve, ReleveLocal, LoadedData, DashboardStats, ReleveConsommation } from '@/types/water';
 import { apiLoadData, apiUnloadData, parseLoadedDataFromJSON } from '@/services/api';
+import { parseSdfToJson } from '@/services/sdfParser';
 import {
   saveLoadedData, getLoadedData, clearLoadedData,
   saveReleves, getReleves,
@@ -19,6 +20,7 @@ interface DataContextType {
   loadData: () => Promise<void>;
   unloadData: () => Promise<void>;
   importJSON: (jsonString: string) => void;
+  importSDF: (file: File) => Promise<void>;
   addReleve: (releve: ReleveLocal) => void;
   getAbonneByPDR: (numPntDrt: string) => Abonne | undefined;
   getStats: () => DashboardStats;
@@ -158,6 +160,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLastLoadDate(new Date().toISOString());
   }, []);
 
+  const importSDF = useCallback(async (file: File) => {
+    const { data } = await parseSdfToJson(file);
+    setLoadedData(data);
+    setLastLoadDate(new Date().toISOString());
+  }, []);
+
   const addReleve = useCallback((releve: ReleveLocal) => {
     setReleves(prev => {
       const existing = prev.findIndex(r => r.NUM_PNT_DRT === releve.NUM_PNT_DRT);
@@ -191,7 +199,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       loadedData, abonnes, tournees,
       anomalies: anomaliesData, annulations: annulationsData,
       releves,
-      loadData, unloadData, importJSON, addReleve, getAbonneByPDR, getStats,
+      loadData, unloadData, importJSON, importSDF, addReleve, getAbonneByPDR, getStats,
       isLoading, isDataLoaded: !!loadedData,
       lastLoadDate, lastUnloadDate,
     }}>

@@ -6,8 +6,9 @@ import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, Check
 import { toast } from 'sonner';
 
 export default function ProfilPage() {
-  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, loadedData } = useApp();
+  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, loadedData } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sdfInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const formatDate = (d: string | null) => {
@@ -36,6 +37,22 @@ export default function ProfilPage() {
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleImportSDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await importSDF(file);
+      toast.success('Import SDF réussi', {
+        description: `${file.name} — données extraites avec succès`,
+      });
+    } catch (err) {
+      toast.error('Erreur d\'import SDF', {
+        description: err instanceof Error ? err.message : 'Fichier SDF invalide',
+      });
+    }
     e.target.value = '';
   };
 
@@ -106,16 +123,23 @@ export default function ProfilPage() {
         {/* Import JSON */}
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-card rounded-xl shadow-card p-4 border border-border flex items-center gap-3 active:scale-[0.98] transition-transform"
-          >
-            <FileUp className="w-5 h-5 text-info" />
-            <div className="text-left">
-              <span className="text-sm font-medium text-foreground block">Importer fichier JSON</span>
-              <span className="text-[11px] text-muted-foreground">Charger les données exportées depuis le serveur</span>
-            </div>
-          </button>
+          <input ref={sdfInputRef} type="file" accept=".sdf" onChange={handleImportSDF} className="hidden" />
+          <div className="flex gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 bg-card rounded-xl shadow-card p-4 border border-border flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              <FileUp className="w-5 h-5 text-info" />
+              <span className="text-xs font-medium text-foreground">Import JSON</span>
+            </button>
+            <button
+              onClick={() => sdfInputRef.current?.click()}
+              className="flex-1 bg-card rounded-xl shadow-card p-4 border border-primary/30 flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              <FileUp className="w-5 h-5 text-primary" />
+              <span className="text-xs font-medium text-foreground">Import SDF</span>
+            </button>
+          </div>
         </motion.div>
 
         {/* Aide & À propos */}

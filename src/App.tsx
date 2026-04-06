@@ -5,11 +5,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider, useApp } from "@/contexts/AppContext";
 import React, { lazy, Suspense } from "react";
 import LoginPage from "./pages/LoginPage";
+import ReleveurSelectPage from "./pages/ReleveurSelectPage";
 import DashboardPage from "./pages/DashboardPage";
 import BottomNav from "./components/BottomNav";
 import NotFound from "./pages/NotFound";
 
-// Lazy-load heavier pages
 const TourneePage = lazy(() => import("./pages/TourneePage"));
 const RelevePage = lazy(() => import("./pages/RelevePage"));
 const HistoriquePage = lazy(() => import("./pages/HistoriquePage"));
@@ -27,13 +27,31 @@ function PageLoader() {
 }
 
 function AppRoutes() {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, releveurSelected, selectReleveur } = useApp();
 
   if (!isAuthenticated) {
     return (
       <Routes>
         <Route path="*" element={<LoginPage />} />
       </Routes>
+    );
+  }
+
+  if (!releveurSelected) {
+    return (
+      <ReleveurSelectPage
+        onSelect={(releveur, sectionGeo, mobile) => {
+          selectReleveur({
+            id: releveur.id,
+            nom: releveur.nom,
+            prenom: releveur.prenom,
+            matricule: releveur.matricule,
+            tournee: '01',
+            sectionGeo,
+            mobile,
+          });
+        }}
+      />
     );
   }
 
