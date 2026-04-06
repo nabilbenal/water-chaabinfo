@@ -40,6 +40,22 @@ export default function ProfilPage() {
     e.target.value = '';
   };
 
+  const handleImportSDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await importSDF(file);
+      toast.success('Import SDF réussi', {
+        description: `${file.name} — données extraites avec succès`,
+      });
+    } catch (err) {
+      toast.error('Erreur d\'import SDF', {
+        description: err instanceof Error ? err.message : 'Fichier SDF invalide',
+      });
+    }
+    e.target.value = '';
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="bg-gradient-hero pt-safe px-4 pt-6 pb-8 rounded-b-3xl">
