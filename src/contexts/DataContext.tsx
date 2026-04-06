@@ -20,6 +20,7 @@ interface DataContextType {
   loadData: () => Promise<void>;
   unloadData: () => Promise<void>;
   importJSON: (jsonString: string) => void;
+  importSDF: (file: File) => Promise<void>;
   addReleve: (releve: ReleveLocal) => void;
   getAbonneByPDR: (numPntDrt: string) => Abonne | undefined;
   getStats: () => DashboardStats;
