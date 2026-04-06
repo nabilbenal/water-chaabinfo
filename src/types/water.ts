@@ -223,4 +223,15 @@ export interface Agent {
   prenom: string;
   matricule: string;
   tournee: string;
+  sectionGeo?: string;
+  mobile?: string;
+}
+
+// Liste des releveurs prédéfinis
+export interface Releveur {
+  id: string;
+  nom: string;
+  prenom: string;
+  matricule: string;
+  sectionsDisponibles: string[];
 }
