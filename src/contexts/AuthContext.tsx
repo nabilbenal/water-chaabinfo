@@ -6,9 +6,11 @@ import { saveAuthSession, getAuthSession, clearAllData } from '@/services/persis
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  releveurSelected: boolean;
   agent: Agent | null;
   login: (matricule: string, password: string) => Promise<boolean>;
   logout: () => void;
+  selectReleveur: (agent: Agent) => void;
   apiMode: 'mock' | 'api';
   setMode: (mode: 'mock' | 'api') => void;
 }
@@ -17,11 +19,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [releveurSelected, setReleveurSelected] = useState(false);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [apiMode, setApiModeState] = useState<'mock' | 'api'>('mock');
   const [hydrated, setHydrated] = useState(false);
 
-  // Restore session from IndexedDB
   useEffect(() => {
     async function restoreSession() {
       try {
@@ -30,6 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAgent(session.agent);
           setAuthToken(session.token);
           setIsAuthenticated(true);
+          // If agent has sectionGeo, releveur was already selected
+          if (session.agent.sectionGeo) {
+            setReleveurSelected(true);
+          }
         }
       } catch (e) {
         console.warn('Erreur restauration session:', e);
@@ -45,6 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setApiModeState(mode);
   }, []);
 
+  const selectReleveur = useCallback(async (agentData: Agent) => {
+    setAgent(agentData);
+    setReleveurSelected(true);
+    await saveAuthSession({ agent: agentData, token: 'mock-token' }).catch(console.warn);
+  }, []);
+
   const login = useCallback(async (matricule: string, password: string) => {
     try {
       const response = await apiLogin(matricule, password);
@@ -54,13 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(true);
         setAgent(agentData);
         if (token) setAuthToken(token);
-        // Persist session
         await saveAuthSession({ agent: agentData, token }).catch(console.warn);
         return true;
       }
       return false;
     } catch {
-      // Fallback demo mode
       if (matricule && password) {
         setIsAuthenticated(true);
         setAgent(mockAgent);
@@ -73,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setIsAuthenticated(false);
+    setReleveurSelected(false);
     setAgent(null);
     setAuthToken(null);
     clearAllData().catch(console.warn);
@@ -81,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (!hydrated) return null;
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, agent, login, logout, apiMode, setMode }}>
+    <AuthContext.Provider value={{ isAuthenticated, releveurSelected, agent, login, logout, selectReleveur, apiMode, setMode }}>
       {children}
     </AuthContext.Provider>
   );
