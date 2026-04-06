@@ -199,7 +199,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       loadedData, abonnes, tournees,
       anomalies: anomaliesData, annulations: annulationsData,
       releves,
-      loadData, unloadData, importJSON, addReleve, getAbonneByPDR, getStats,
+      loadData, unloadData, importJSON, importSDF, addReleve, getAbonneByPDR, getStats,
       isLoading, isDataLoaded: !!loadedData,
       lastLoadDate, lastUnloadDate,
     }}>
