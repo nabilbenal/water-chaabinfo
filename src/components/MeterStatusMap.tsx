@@ -41,15 +41,17 @@ interface MeterStatusMapProps {
 export default function MeterStatusMap({ abonnes, releves, height = 220, className = '' }: MeterStatusMapProps) {
   const navigate = useNavigate();
   const markers = useMemo(() => {
-    return abonnes.map(abo => {
-      const releve = releves.find(r => r.NUM_PNT_DRT === abo.NUM_PNT_DRT_ABO);
-      const done = !!releve?.VAL_IDX_NOUVEAU;
-      // Use releve GPS if available, otherwise generate deterministic position
-      const lat = releve?.latitude;
-      const lng = releve?.longitude;
-      const pos: [number, number] = lat && lng ? [lat, lng] : seedOffset(abo.NUM_PNT_DRT_ABO);
-      return { abo, done, pos };
-    });
+    if (!abonnes?.length) return [];
+    return abonnes
+      .filter(abo => abo.NUM_PNT_DRT_ABO)
+      .map(abo => {
+        const releve = releves?.find(r => r.NUM_PNT_DRT === abo.NUM_PNT_DRT_ABO);
+        const done = !!releve?.VAL_IDX_NOUVEAU;
+        const lat = releve?.latitude;
+        const lng = releve?.longitude;
+        const pos: [number, number] = lat && lng ? [lat, lng] : seedOffset(abo.NUM_PNT_DRT_ABO);
+        return { abo, done, pos };
+      });
   }, [abonnes, releves]);
 
   const doneCount = markers.filter(m => m.done).length;

@@ -197,7 +197,7 @@ export function parseLoadedDataFromJSON(jsonString: string): LoadedData {
     accessibilites: findKey(raw, 'acb_apt', 'ACB_APT', 'accessibilites') as LoadedData['accessibilites'],
     modeles: findKey(raw, 'mdl_apt', 'MDL_APT', 'modeles') as LoadedData['modeles'],
     portes: findKey(raw, 'prt_pnt_drt', 'PRT_PNT_DRT', 'portes') as LoadedData['portes'],
-    consommations: findKey(raw, 'cso', 'CSO', 'consommations', 'Consommations') as LoadedData['consommations'],
+    consommations: findKey(raw, 'cso', 'CSO', 'CSO_RLV', 'cso_rlv', 'consommations', 'Consommations') as LoadedData['consommations'],
     parametres: findKey(raw, 'par', 'PAR', 'parametres') as LoadedData['parametres'],
     elementsCompteur: findKey(raw, 'elt_apt', 'ELT_APT', 'elements') as LoadedData['elementsCompteur'],
     pointsDroit: findKey(raw, 'pnt_drt', 'PNT_DRT', 'points') as LoadedData['pointsDroit'],
