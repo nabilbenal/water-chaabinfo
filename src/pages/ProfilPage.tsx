@@ -123,16 +123,23 @@ export default function ProfilPage() {
         {/* Import JSON */}
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-card rounded-xl shadow-card p-4 border border-border flex items-center gap-3 active:scale-[0.98] transition-transform"
-          >
-            <FileUp className="w-5 h-5 text-info" />
-            <div className="text-left">
-              <span className="text-sm font-medium text-foreground block">Importer fichier JSON</span>
-              <span className="text-[11px] text-muted-foreground">Charger les données exportées depuis le serveur</span>
-            </div>
-          </button>
+          <input ref={sdfInputRef} type="file" accept=".sdf" onChange={handleImportSDF} className="hidden" />
+          <div className="flex gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 bg-card rounded-xl shadow-card p-4 border border-border flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              <FileUp className="w-5 h-5 text-info" />
+              <span className="text-xs font-medium text-foreground">Import JSON</span>
+            </button>
+            <button
+              onClick={() => sdfInputRef.current?.click()}
+              className="flex-1 bg-card rounded-xl shadow-card p-4 border border-primary/30 flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              <FileUp className="w-5 h-5 text-primary" />
+              <span className="text-xs font-medium text-foreground">Import SDF</span>
+            </button>
+          </div>
         </motion.div>
 
         {/* Aide & À propos */}
