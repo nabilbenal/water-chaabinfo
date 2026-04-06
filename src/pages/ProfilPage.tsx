@@ -6,8 +6,9 @@ import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, Check
 import { toast } from 'sonner';
 
 export default function ProfilPage() {
-  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, loadedData } = useApp();
+  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, loadedData } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sdfInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const formatDate = (d: string | null) => {
