@@ -13,7 +13,7 @@ export default function HistoriquePage() {
     <div className="min-h-screen bg-background pb-24">
       <div className="bg-card border-b border-border pt-safe px-4 pt-4 pb-4">
         <h1 className="text-xl font-bold text-foreground">Historique</h1>
-        <p className="text-sm text-muted-foreground">{releves.length} relevé(s) effectué(s)</p>
+        <p className="text-sm text-muted-foreground">{releves?.length || 0} relevé(s) effectué(s)</p>
       </div>
 
       {abonnes.length > 0 && (
