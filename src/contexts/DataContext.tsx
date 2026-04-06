@@ -160,6 +160,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLastLoadDate(new Date().toISOString());
   }, []);
 
+  const importSDF = useCallback(async (file: File) => {
+    const { data } = await parseSdfToJson(file);
+    setLoadedData(data);
+    setLastLoadDate(new Date().toISOString());
+  }, []);
+
   const addReleve = useCallback((releve: ReleveLocal) => {
     setReleves(prev => {
       const existing = prev.findIndex(r => r.NUM_PNT_DRT === releve.NUM_PNT_DRT);
