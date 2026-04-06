@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type { Abonne, Tournee, AnomalieReleve, AnnulationReleve, ReleveLocal, LoadedData, DashboardStats, ReleveConsommation } from '@/types/water';
 import { apiLoadData, apiUnloadData, parseLoadedDataFromJSON } from '@/services/api';
+import { parseSdfToJson } from '@/services/sdfParser';
 import {
   saveLoadedData, getLoadedData, clearLoadedData,
   saveReleves, getReleves,
