@@ -204,7 +204,7 @@ export async function apiUnloadData(
   }
 
   if (currentMode === 'soap') {
-    const { soapDechargementReleves, type RelevePdaOut } = await import('./soapClient');
+    const { soapDechargementReleves } = await import('./soapClient');
     const terminal = numTerminal || 'PDA001';
     
     // Map ReleveConsommation to RelevePdaOut format
