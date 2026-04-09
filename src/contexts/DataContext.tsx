@@ -143,7 +143,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           timestamp: r.dateReleve,
         }));
 
-      await apiUnloadData(relevesCSO, photos);
+      await apiUnloadData(relevesCSO, photos, agent?.mobile, loadedData);
       setReleves(prev => prev.map(r => ({ ...r, synced: true })));
       setLastUnloadDate(new Date().toISOString());
     } catch (error) {

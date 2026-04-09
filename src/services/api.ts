@@ -146,10 +146,33 @@ export async function apiLogin(
   return response;
 }
 
-export async function apiLoadData(tourneeId?: string): Promise<LoadedData> {
+export async function apiLoadData(tourneeId?: string, numTerminal?: string): Promise<LoadedData> {
   if (currentMode === 'mock') {
     await new Promise((r) => setTimeout(r, 1500));
     return mockLoadedData;
+  }
+
+  if (currentMode === 'soap') {
+    const { soapTourneeEnCours, soapListeReleves, soapValideChargement, parseListeRelevesResponse } = await import('./soapClient');
+    const terminal = numTerminal || 'PDA001';
+    
+    // 1. Get current tournee if not provided
+    let tournee = tourneeId || '';
+    if (!tournee) {
+      const tourneeXml = await soapTourneeEnCours(terminal);
+      // Extract tournee number from response
+      const { extractTagValue } = await import('./soapClient');
+      tournee = extractTagValue(tourneeXml, 'NumeroTournee') || extractTagValue(tourneeXml, 'NUM_TRN') || '01';
+    }
+    
+    // 2. Load releves list
+    const relevesXml = await soapListeReleves(terminal, tournee);
+    const data = parseListeRelevesResponse(relevesXml);
+    
+    // 3. Validate loading
+    await soapValideChargement(terminal).catch(console.warn);
+    
+    return data;
   }
 
   const response = await apiRequest<LoadResponse>(
@@ -166,7 +189,9 @@ export async function apiLoadData(tourneeId?: string): Promise<LoadedData> {
 
 export async function apiUnloadData(
   releves: ReleveConsommation[],
-  photos: PhotoReleve[] = []
+  photos: PhotoReleve[] = [],
+  numTerminal?: string,
+  loadedData?: LoadedData
 ): Promise<UnloadResponse> {
   if (currentMode === 'mock') {
     await new Promise((r) => setTimeout(r, 1500));
@@ -175,6 +200,47 @@ export async function apiUnloadData(
       acceptedCount: releves.length,
       rejectedCount: 0,
       message: `${releves.length} relevé(s) synchronisé(s) avec succès`,
+    };
+  }
+
+  if (currentMode === 'soap') {
+    const { soapDechargementReleves } = await import('./soapClient');
+    const terminal = numTerminal || 'PDA001';
+    
+    // Map ReleveConsommation to RelevePdaOut format
+    const relevesOut: import('./soapClient').RelevePdaOut[] = releves.map((r, i) => {
+      // Find matching abonne in loadedData for additional fields
+      const abo = loadedData?.abonnes?.find(a => a.NUM_PNT_DRT_ABO === r.NUM_PNT_DRT);
+      return {
+        ORDRE: abo?.ORDRE || i + 1,
+        COD_PRT_1_PNT_DRT: abo?.COD_PAL_PAL_ABO || '',
+        ANC_NUM_ORD_REL_PNT_DRT: String(abo?.NUM_ORD_REL_ABO || ''),
+        COD_ELT_APT: abo?.COD_TYP_RES || '',
+        COD_MDL_ELT_APT: '',
+        NUM_SER_ELT_APT: abo?.NUM_PHY_APT_ABO || '',
+        COD_MDL_APT_APT: abo?.NUM_APT || '',
+        NumeroCommune: abo?.NUM_COM || 0,
+        NomCommune: abo?.NOM_COM || '',
+        NumeroPhysiqueRegroupant: abo?.NUM_PHY_APT_RGR || '',
+        ConsommationReleve: {
+          PER_HIS_RLV: r.PER_HIS_RLV,
+          ANN_HIS_RLV: r.ANN_HIS_RLV,
+          NUM_PNT_DRT: r.NUM_PNT_DRT,
+          COD_ANO_RLV: r.COD_ANO_RLV,
+          COD_ANN_RLV: r.COD_ANN_RLV,
+          DAT_RLV_CSO_RLV: r.DAT_RLV_CSO_RLV,
+          VAL_IDX_CSO_RLV: r.VAL_IDX_CSO_RLV,
+          CMT_RLR: r.CMT_RLR,
+        },
+      };
+    });
+    
+    await soapDechargementReleves(terminal, relevesOut, false);
+    return {
+      success: true,
+      acceptedCount: releves.length,
+      rejectedCount: 0,
+      message: `${releves.length} relevé(s) déchargé(s) via SOAP`,
     };
   }
 
