@@ -1,9 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
-import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
+import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSoapConfig, saveSoapConfig, testSoapConnection, type SoapConfig } from '@/services/soapClient';
 
 export default function ProfilPage() {
   const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, loadedData } = useApp();
@@ -87,16 +88,25 @@ export default function ProfilPage() {
               onClick={() => setMode('mock')}
               className={`flex-1 py-2.5 rounded-lg text-xs font-medium transition-all ${apiMode === 'mock' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
             >
-              Démo (local)
+              Démo
             </button>
             <button
               onClick={() => setMode('api')}
               className={`flex-1 py-2.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${apiMode === 'api' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
             >
-              <Wifi className="w-3 h-3" /> Serveur ERP
+              <Wifi className="w-3 h-3" /> REST
+            </button>
+            <button
+              onClick={() => setMode('soap')}
+              className={`flex-1 py-2.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${apiMode === 'soap' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+            >
+              <Server className="w-3 h-3" /> SOAP
             </button>
           </div>
         </motion.div>
+
+        {/* SOAP Configuration */}
+        {apiMode === 'soap' && <SoapConfigPanel />}
 
         {/* Résumé données chargées */}
         {loadedData && (
@@ -181,5 +191,75 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
       </div>
       <span className="text-sm font-medium text-foreground">{value}</span>
     </div>
+  );
+}
+
+function SoapConfigPanel() {
+  const existing = getSoapConfig();
+  const [serverUrl, setServerUrl] = useState(existing?.serverUrl || 'http://10.53.64.61/rec');
+  const [clientId, setClientId] = useState(existing?.clientId || '');
+  const [accessKey, setAccessKey] = useState(existing?.accessKey || '');
+  const [testing, setTesting] = useState(false);
+
+  const handleSave = () => {
+    saveSoapConfig({ serverUrl, clientId, accessKey });
+    toast.success('Configuration SOAP sauvegardée');
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const result = await testSoapConnection({ serverUrl, clientId, accessKey });
+      if (result.success) {
+        toast.success('Connexion SOAP réussie', { description: result.message });
+        saveSoapConfig({ serverUrl, clientId, accessKey });
+      } else {
+        toast.error('Échec connexion SOAP', { description: result.message });
+      }
+    } catch (e) {
+      toast.error('Erreur', { description: e instanceof Error ? e.message : 'Erreur inconnue' });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+      className="bg-card rounded-xl shadow-card p-4 border border-primary/30 space-y-3">
+      <p className="text-sm font-medium text-foreground flex items-center gap-2">
+        <Settings className="w-4 h-4 text-primary" /> Configuration SOMEI (SOAP)
+      </p>
+      <div className="space-y-2">
+        <div>
+          <label className="text-xs text-muted-foreground">URL Serveur</label>
+          <input value={serverUrl} onChange={e => setServerUrl(e.target.value)}
+            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/30"
+            placeholder="http://10.53.64.61/rec" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Client ID</label>
+          <input value={clientId} onChange={e => setClientId(e.target.value)}
+            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/30"
+            placeholder="Identifiant SOMEI" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Access Key</label>
+          <input type="password" value={accessKey} onChange={e => setAccessKey(e.target.value)}
+            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/30"
+            placeholder="Mot de passe SOMEI" />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={handleSave}
+          className="flex-1 py-2 rounded-lg bg-muted text-foreground text-xs font-medium">
+          Sauvegarder
+        </button>
+        <button onClick={handleTest} disabled={testing || !clientId || !accessKey}
+          className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1 disabled:opacity-50">
+          {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3" />}
+          {testing ? 'Test...' : 'Tester'}
+        </button>
+      </div>
+    </motion.div>
   );
 }
