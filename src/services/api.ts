@@ -44,7 +44,7 @@ interface UnloadResponse {
   message?: string;
 }
 
-type ApiMode = 'mock' | 'api';
+type ApiMode = 'mock' | 'api' | 'soap';
 
 let currentMode: ApiMode = 'mock';
 let authToken: string | null = null;
@@ -107,6 +107,27 @@ export async function apiLogin(
         id: 'AGT001',
         nom: 'BENALI',
         prenom: 'Mohamed',
+        matricule,
+        tournee: '01',
+      },
+    };
+  }
+
+  // SOAP mode: use SOMEI GenerateToken
+  if (currentMode === 'soap') {
+    const { generateToken, getSoapConfig } = await import('./soapClient');
+    const cfg = getSoapConfig();
+    if (!cfg) throw new Error('Configuration SOAP non définie. Allez dans Profil > Paramètres serveur.');
+    
+    const token = await generateToken(cfg);
+    authToken = token;
+    return {
+      success: true,
+      token,
+      agent: {
+        id: matricule,
+        nom: matricule.toUpperCase(),
+        prenom: '',
         matricule,
         tournee: '01',
       },
