@@ -11,8 +11,8 @@ interface AuthContextType {
   login: (matricule: string, password: string) => Promise<boolean>;
   logout: () => void;
   selectReleveur: (agent: Agent) => void;
-  apiMode: 'mock' | 'api';
-  setMode: (mode: 'mock' | 'api') => void;
+  apiMode: 'mock' | 'api' | 'soap';
+  setMode: (mode: 'mock' | 'api' | 'soap') => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [releveurSelected, setReleveurSelected] = useState(false);
   const [agent, setAgent] = useState<Agent | null>(null);
-  const [apiMode, setApiModeState] = useState<'mock' | 'api'>('mock');
+  const [apiMode, setApiModeState] = useState<'mock' | 'api' | 'soap'>('mock');
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     restoreSession();
   }, []);
 
-  const setMode = useCallback((mode: 'mock' | 'api') => {
+  const setMode = useCallback((mode: 'mock' | 'api' | 'soap') => {
     setApiMode(mode);
     setApiModeState(mode);
   }, []);
