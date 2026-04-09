@@ -245,5 +245,216 @@ export async function testSoapConnection(config: SoapConfig): Promise<{
   }
 }
 
+// ─── WSRelevePda: TourneeEnCours ────────────────────────────────
+export async function soapTourneeEnCours(numTerminal: string): Promise<string> {
+  const result = await authenticatedSoapRequest(
+    'WSRelevePda.asmx',
+    `${NAMESPACE}TourneeEnCours`,
+    (token) => `<web:TourneeEnCours>
+      <web:beanIn>
+        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
+      </web:beanIn>
+    </web:TourneeEnCours>`
+  );
+  if (result.status === 'ERROR') {
+    throw new Error(`TourneeEnCours échouée: [${result.code}] ${result.message}`);
+  }
+  return result.raw;
+}
+
+// ─── WSRelevePda: ListeReleves (Chargement) ─────────────────────
+export async function soapListeReleves(numTerminal: string, numTournee: string): Promise<string> {
+  const result = await authenticatedSoapRequest(
+    'WSRelevePda.asmx',
+    `${NAMESPACE}ListeReleves`,
+    (token) => `<web:ListeReleves>
+      <web:beanIn>
+        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
+        <web:NumeroTournee>${escapeXml(numTournee)}</web:NumeroTournee>
+      </web:beanIn>
+    </web:ListeReleves>`
+  );
+  if (result.status === 'ERROR') {
+    throw new Error(`ListeReleves échouée: [${result.code}] ${result.message}`);
+  }
+  return result.raw;
+}
+
+// ─── WSRelevePda: ValideChargement ──────────────────────────────
+export async function soapValideChargement(numTerminal: string): Promise<void> {
+  const result = await authenticatedSoapRequest(
+    'WSRelevePda.asmx',
+    `${NAMESPACE}ValideChargement`,
+    (token) => `<web:ValideChargement>
+      <web:beanIn>
+        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
+      </web:beanIn>
+    </web:ValideChargement>`
+  );
+  if (result.status === 'ERROR') {
+    throw new Error(`ValideChargement échouée: [${result.code}] ${result.message}`);
+  }
+}
+
+// ─── WSRelevePda: DechargementReleves ───────────────────────────
+export interface RelevePdaOut {
+  ORDRE: number;
+  COD_PRT_1_PNT_DRT: string;
+  ANC_NUM_ORD_REL_PNT_DRT: string;
+  COD_ELT_APT: string;
+  COD_MDL_ELT_APT: string;
+  NUM_SER_ELT_APT: string;
+  COD_MDL_APT_APT: string;
+  NumeroCommune: number;
+  NomCommune: string;
+  NumeroPhysiqueRegroupant: string;
+  ConsommationReleve?: {
+    PER_HIS_RLV: number;
+    ANN_HIS_RLV: number;
+    NUM_PNT_DRT: string;
+    COD_ANO_RLV?: string;
+    COD_ANN_RLV?: string;
+    DAT_RLV_CSO_RLV?: string;
+    VAL_IDX_CSO_RLV?: number;
+    CMT_RLR?: string;
+  };
+}
+
+function buildRelevePdaXml(r: RelevePdaOut): string {
+  const ns = 'Somei.Webservice.EntiteMetier.Releve';
+  let csoXml = `<ConsommationReleve xsi:nil="true" xmlns="${ns}" />`;
+  if (r.ConsommationReleve) {
+    const c = r.ConsommationReleve;
+    csoXml = `<ConsommationReleve xmlns="${ns}">
+      <PER_HIS_RLV>${c.PER_HIS_RLV}</PER_HIS_RLV>
+      <ANN_HIS_RLV>${c.ANN_HIS_RLV}</ANN_HIS_RLV>
+      <NUM_PNT_DRT>${escapeXml(c.NUM_PNT_DRT)}</NUM_PNT_DRT>
+      ${c.COD_ANO_RLV ? `<COD_ANO_RLV>${escapeXml(c.COD_ANO_RLV)}</COD_ANO_RLV>` : ''}
+      ${c.COD_ANN_RLV ? `<COD_ANN_RLV>${escapeXml(c.COD_ANN_RLV)}</COD_ANN_RLV>` : ''}
+      ${c.DAT_RLV_CSO_RLV ? `<DAT_RLV_CSO_RLV>${escapeXml(c.DAT_RLV_CSO_RLV)}</DAT_RLV_CSO_RLV>` : ''}
+      ${c.VAL_IDX_CSO_RLV !== undefined ? `<VAL_IDX_CSO_RLV>${c.VAL_IDX_CSO_RLV}</VAL_IDX_CSO_RLV>` : ''}
+      ${c.CMT_RLR ? `<CMT_RLR>${escapeXml(c.CMT_RLR)}</CMT_RLR>` : ''}
+    </ConsommationReleve>`;
+  }
+
+  return `<RelevePdaInfo>
+    <ORDRE xmlns="${ns}">${r.ORDRE}</ORDRE>
+    <COD_PRT_1_PNT_DRT xmlns="${ns}">${escapeXml(r.COD_PRT_1_PNT_DRT)}</COD_PRT_1_PNT_DRT>
+    <ANC_NUM_ORD_REL_PNT_DRT xmlns="${ns}">${escapeXml(r.ANC_NUM_ORD_REL_PNT_DRT)}</ANC_NUM_ORD_REL_PNT_DRT>
+    <COD_ELT_APT xmlns="${ns}">${escapeXml(r.COD_ELT_APT)}</COD_ELT_APT>
+    <COD_MDL_ELT_APT xmlns="${ns}">${escapeXml(r.COD_MDL_ELT_APT)}</COD_MDL_ELT_APT>
+    <NUM_SER_ELT_APT xmlns="${ns}">${escapeXml(r.NUM_SER_ELT_APT)}</NUM_SER_ELT_APT>
+    <COD_MDL_APT_APT xmlns="${ns}">${escapeXml(r.COD_MDL_APT_APT)}</COD_MDL_APT_APT>
+    <Consommations xsi:nil="true" xmlns="${ns}" />
+    ${csoXml}
+    <RadioReleve xsi:nil="true" xmlns="${ns}" />
+    <NumeroCommune xmlns="${ns}">${r.NumeroCommune}</NumeroCommune>
+    <NomCommune xmlns="${ns}">${escapeXml(r.NomCommune)}</NomCommune>
+    <NumeroPhysiqueRegroupant xmlns="${ns}">${escapeXml(r.NumeroPhysiqueRegroupant)}</NumeroPhysiqueRegroupant>
+  </RelevePdaInfo>`;
+}
+
+export async function soapDechargementReleves(
+  numTerminal: string,
+  releves: RelevePdaOut[],
+  dechargementSimple: boolean = false
+): Promise<string> {
+  const relevesXml = releves.map(buildRelevePdaXml).join('\n');
+
+  const result = await authenticatedSoapRequest(
+    'WSRelevePda.asmx',
+    `${NAMESPACE}DechargementReleves`,
+    (token) => `<web:DechargementReleves>
+      <web:beanIn>
+        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
+        <web:Releves>
+          ${relevesXml}
+        </web:Releves>
+        <web:DechargementSimple>${dechargementSimple}</web:DechargementSimple>
+      </web:beanIn>
+    </web:DechargementReleves>`
+  );
+  if (result.status === 'ERROR') {
+    throw new Error(`DechargementReleves échouée: [${result.code}] ${result.message}`);
+  }
+  return result.raw;
+}
+
+// ─── XML → LoadedData parser ────────────────────────────────────
+/**
+ * Parse the ListeReleves SOAP response XML into a LoadedData structure.
+ * Extracts RelevePdaInfo elements and maps them to Abonne records.
+ */
+export function parseListeRelevesResponse(xml: string): import('@/types/water').LoadedData {
+  const abonnes: import('@/types/water').Abonne[] = [];
+  
+  // Extract all RelevePdaInfo blocks
+  const blockRegex = /<RelevePdaInfo>([\s\S]*?)<\/RelevePdaInfo>/gi;
+  let blockMatch: RegExpExecArray | null;
+  
+  while ((blockMatch = blockRegex.exec(xml)) !== null) {
+    const block = blockMatch[1];
+    const tag = (name: string) => {
+      const r = new RegExp(`<${name}[^>]*>([^<]*)</${name}>`, 'i');
+      const m = block.match(r);
+      return m ? m[1].trim() : '';
+    };
+    
+    abonnes.push({
+      NUM_TRN_ABO: tag('NUM_TRN') || '',
+      NUM_SEC_LIV_ABO: tag('COD_PAL_SEC_GEO') || '',
+      NUM_RUE_TRN_ABO: tag('NO_RUE') || '',
+      NUM_TRC_RUE_TRN_ABO: parseInt(tag('NUM_RUE')) || 0,
+      NO_RUE_LIV_ABO: parseInt(tag('NO_RUE')) || 0,
+      NO_ETG_LIV_ABO: parseInt(tag('NO_ETG')) || 0,
+      NUM_SEC_RGR_ABO: tag('NumeroPhysiqueRegroupant') || '',
+      NOM_RUE_LIV_ABO: tag('LIB_RUE') || tag('NOM_RUE') || '',
+      NUM_CTA_ABO: tag('NUM_CTA') || '',
+      RAI_SOC_CLI_ABO: tag('NOM_CON') || tag('NOM_FAC') || '',
+      NUM_PHY_APT_ABO: tag('NUM_APT') || tag('NO_APT') || '',
+      VAL_IDX_CSO_ANC_ABO: parseInt(tag('VAL_IDX')) || 0,
+      VOL_CSO_MAX_ABO: parseInt(tag('VAL_IDX_CSO_MAX')) || undefined,
+      VOL_CSO_MIN_ABO: parseInt(tag('VAL_IDX_CSO_MIN')) || undefined,
+      DIA_APT_ABO: parseInt(tag('DIA_APT')) || undefined,
+      ANN_FAB_CPR_ABO: parseInt(tag('ANN_FAB')) || undefined,
+      RPG_APT_PNT_DRT_ABO: tag('RPG_APT') || '',
+      IND_ACB_APT_ABO: tag('COD_ACC_APT') || '',
+      NUM_PNT_DRT_ABO: tag('NUM_PNT_DRT') || tag('COD_PRT_1_PNT_DRT') || '',
+      COD_ETA_CTA_ABO: tag('ETA_CTA') || '',
+      NUM_ORD_REL_ABO: parseInt(tag('ORDRE')) || parseInt(tag('NO_RLV')) || 0,
+      ORDRE: parseInt(tag('ORDRE')) || 0,
+      NOM_COM: tag('NomCommune') || tag('BUR_DSB_SEC_GEO') || '',
+      NUM_COM: parseInt(tag('NumeroCommune')) || parseInt(tag('COD_COM')) || undefined,
+      NUM_PHY_APT_RGR: tag('NumeroPhysiqueRegroupant') || '',
+      NUM_APT: tag('NUM_APT') || tag('NO_APT') || '',
+      COD_TYP_RES: tag('COD_TYP_MTR') || '',
+      COD_PAL_PAL_ABO: tag('COD_PAL_SEC_GEO') || '',
+    });
+  }
+
+  // Extract tournee info
+  const tourneeNum = extractTagValue(xml, 'NUM_TRN') || extractTagValue(xml, 'NumeroTournee') || '';
+  const tournees: import('@/types/water').Tournee[] = tourneeNum ? [{ NUM_TRN: tourneeNum }] : [];
+
+  return {
+    abonnes,
+    tournees,
+    compteurs: [],
+    anomalies: [],
+    annulations: [],
+    accessibilites: [],
+    modeles: [],
+    portes: [],
+    consommations: [],
+    parametres: [],
+    elementsCompteur: [],
+    pointsDroit: [],
+  };
+}
+
 // ─── Utility exports ────────────────────────────────────────────
 export { escapeXml, buildSoapEnvelope, extractTagValue, extractAllTags };
