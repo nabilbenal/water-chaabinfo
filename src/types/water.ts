@@ -152,6 +152,14 @@ export interface PointDroit {
   ANC_NUM_ORD_REL_PNT_DRT?: string;
 }
 
+// Paramétrage PDA (depuis WSParametragePda SOMEI)
+export interface ParametragePda {
+  cellules: { code: string; libelle: string }[];
+  famillesIntervention: { code: string; libelle: string }[];
+  originesIntervention: { code: string; libelle: string }[];
+  typesMoyen: { code: string; libelle: string }[];
+}
+
 // Données chargées depuis le serveur
 export interface LoadedData {
   abonnes: Abonne[];
@@ -166,6 +174,7 @@ export interface LoadedData {
   parametres: Parametre[];
   elementsCompteur: ElementCompteur[];
   pointsDroit: PointDroit[];
+  parametragePda?: ParametragePda;
 }
 
 // Données à décharger vers le serveur

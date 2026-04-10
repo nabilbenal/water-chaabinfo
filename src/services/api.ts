@@ -153,21 +153,28 @@ export async function apiLoadData(tourneeId?: string, numTerminal?: string): Pro
   }
 
   if (currentMode === 'soap') {
-    const { soapTourneeEnCours, soapListeReleves, soapValideChargement, parseListeRelevesResponse } = await import('./soapClient');
+    const { soapTourneeEnCours, soapListeReleves, soapValideChargement, parseListeRelevesResponse, soapLoadAllParametrage } = await import('./soapClient');
     const terminal = numTerminal || 'PDA001';
     
     // 1. Get current tournee if not provided
     let tournee = tourneeId || '';
     if (!tournee) {
       const tourneeXml = await soapTourneeEnCours(terminal);
-      // Extract tournee number from response
       const { extractTagValue } = await import('./soapClient');
       tournee = extractTagValue(tourneeXml, 'NumeroTournee') || extractTagValue(tourneeXml, 'NUM_TRN') || '01';
     }
     
-    // 2. Load releves list
-    const relevesXml = await soapListeReleves(terminal, tournee);
+    // 2. Load releves list and parametrage in parallel
+    const [relevesXml, parametrage] = await Promise.all([
+      soapListeReleves(terminal, tournee),
+      soapLoadAllParametrage(),
+    ]);
     const data = parseListeRelevesResponse(relevesXml);
+    
+    // Attach parametrage PDA to loaded data
+    if (parametrage) {
+      data.parametragePda = parametrage;
+    }
     
     // 3. Validate loading
     await soapValideChargement(terminal).catch(console.warn);
