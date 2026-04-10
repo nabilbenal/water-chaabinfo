@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
-import { motion } from 'framer-motion';
-import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSoapConfig, saveSoapConfig, testSoapConnection, type SoapConfig } from '@/services/soapClient';
 
@@ -129,6 +129,9 @@ export default function ProfilPage() {
             )}
           </motion.div>
         )}
+
+        {/* Paramétrage PDA SOMEI */}
+        {loadedData?.parametragePda && <ParametragePdaPanel parametrage={loadedData.parametragePda} />}
 
         {/* Import JSON */}
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
@@ -259,6 +262,72 @@ function SoapConfigPanel() {
           {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3" />}
           {testing ? 'Test...' : 'Tester'}
         </button>
+      </div>
+    </motion.div>
+  );
+}
+
+function ParametragePdaPanel({ parametrage }: { parametrage: import('@/types/water').ParametragePda }) {
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const toggle = (key: string) => setOpenSection(prev => prev === key ? null : key);
+
+  const sections = [
+    { key: 'cellules', label: 'Cellules', icon: <Grid3X3 className="w-4 h-4 text-primary" />, data: parametrage.cellules },
+    { key: 'familles', label: 'Familles d\'intervention', icon: <Wrench className="w-4 h-4 text-accent" />, data: parametrage.famillesIntervention },
+    { key: 'origines', label: 'Origines d\'intervention', icon: <MapPin className="w-4 h-4 text-info" />, data: parametrage.originesIntervention },
+    { key: 'types', label: 'Types de moyen', icon: <Cog className="w-4 h-4 text-success" />, data: parametrage.typesMoyen },
+  ];
+
+  const totalCount = sections.reduce((sum, s) => sum + s.data.length, 0);
+  if (totalCount === 0) return null;
+
+  return (
+    <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.12 }}
+      className="bg-card rounded-xl shadow-card border border-border overflow-hidden">
+      <div className="p-4 pb-2">
+        <p className="text-sm font-medium text-foreground flex items-center gap-2">
+          <Settings className="w-4 h-4 text-primary" /> Paramétrage SOMEI
+          <span className="ml-auto text-xs text-muted-foreground">{totalCount} éléments</span>
+        </p>
+      </div>
+      <div className="px-4 pb-4 space-y-1">
+        {sections.map(({ key, label, icon, data }) => (
+          <div key={key}>
+            <button
+              onClick={() => toggle(key)}
+              className="w-full flex items-center gap-2 py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+            >
+              {icon}
+              <span className="text-xs font-medium text-foreground flex-1">{label}</span>
+              <span className="text-[11px] text-muted-foreground mr-1">{data.length}</span>
+              {openSection === key
+                ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+              }
+            </button>
+            <AnimatePresence>
+              {openSection === key && data.length > 0 && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="ml-6 mr-1 mb-2 rounded-lg bg-muted/30 border border-border/50 divide-y divide-border/30 max-h-48 overflow-y-auto">
+                    {data.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                        <span className="font-mono text-primary/80 min-w-[3rem]">{item.code}</span>
+                        <span className="text-muted-foreground truncate">{item.libelle || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
       </div>
     </motion.div>
   );
