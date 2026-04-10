@@ -130,6 +130,9 @@ export default function ProfilPage() {
           </motion.div>
         )}
 
+        {/* Paramétrage PDA SOMEI */}
+        {loadedData?.parametragePda && <ParametragePdaPanel parametrage={loadedData.parametragePda} />}
+
         {/* Import JSON */}
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
