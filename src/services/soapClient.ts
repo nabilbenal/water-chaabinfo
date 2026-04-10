@@ -456,5 +456,144 @@ export function parseListeRelevesResponse(xml: string): import('@/types/water').
   };
 }
 
+// ─── WSParametragePda ───────────────────────────────────────────
+
+export interface CelluleParam {
+  code: string;
+  libelle: string;
+}
+
+export interface FamilleIntervention {
+  code: string;
+  libelle: string;
+}
+
+export interface OrigineIntervention {
+  code: string;
+  libelle: string;
+}
+
+export interface TypeMoyen {
+  code: string;
+  libelle: string;
+}
+
+export interface ParametragePda {
+  cellules: CelluleParam[];
+  famillesIntervention: FamilleIntervention[];
+  originesIntervention: OrigineIntervention[];
+  typesMoyen: TypeMoyen[];
+}
+
+function parseCodeLibelleList(xml: string, blockTag: string): { code: string; libelle: string }[] {
+  const results: { code: string; libelle: string }[] = [];
+  const blockRegex = new RegExp(`<${blockTag}[^>]*>([\\s\\S]*?)</${blockTag}>`, 'gi');
+  let match: RegExpExecArray | null;
+  while ((match = blockRegex.exec(xml)) !== null) {
+    const block = match[1];
+    const code = extractTagValue(block, 'Code') || extractTagValue(block, 'COD') || '';
+    const libelle = extractTagValue(block, 'Libelle') || extractTagValue(block, 'LIB') || '';
+    if (code || libelle) {
+      results.push({ code, libelle });
+    }
+  }
+  // Fallback: try generic item tags if no results found
+  if (results.length === 0) {
+    const genericTags = ['CelluleInfo', 'FamilleInterventionInfo', 'OrigineInterventionInfo', 'TypeMoyenInfo', 'anyType'];
+    for (const tag of genericTags) {
+      const fallbackRegex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'gi');
+      while ((match = fallbackRegex.exec(xml)) !== null) {
+        const block = match[1];
+        const code = extractTagValue(block, 'Code') || extractTagValue(block, 'COD') || '';
+        const libelle = extractTagValue(block, 'Libelle') || extractTagValue(block, 'LIB') || '';
+        if (code || libelle) {
+          results.push({ code, libelle });
+        }
+      }
+      if (results.length > 0) break;
+    }
+  }
+  return results;
+}
+
+/** Récupère le paramétrage des cellules */
+export async function soapRecupererCellules(): Promise<CelluleParam[]> {
+  const result = await authenticatedSoapRequest(
+    'WSParametragePda.asmx',
+    `${NAMESPACE}RecupererParametrageCellules`,
+    (token) => `<web:RecupererParametrageCellules>
+      <web:beanIn>
+        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+      </web:beanIn>
+    </web:RecupererParametrageCellules>`
+  );
+  if (result.status === 'ERROR') {
+    throw new Error(`RecupererParametrageCellules échouée: [${result.code}] ${result.message}`);
+  }
+  return parseCodeLibelleList(result.raw, 'CelluleInfo');
+}
+
+/** Récupère le paramétrage des familles d'intervention */
+export async function soapRecupererFamillesIntervention(): Promise<FamilleIntervention[]> {
+  const result = await authenticatedSoapRequest(
+    'WSParametragePda.asmx',
+    `${NAMESPACE}RecupererParametrageFamillesIntervention`,
+    (token) => `<web:RecupererParametrageFamillesIntervention>
+      <web:beanIn>
+        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+      </web:beanIn>
+    </web:RecupererParametrageFamillesIntervention>`
+  );
+  if (result.status === 'ERROR') {
+    throw new Error(`RecupererParametrageFamillesIntervention échouée: [${result.code}] ${result.message}`);
+  }
+  return parseCodeLibelleList(result.raw, 'FamilleInterventionInfo');
+}
+
+/** Récupère le paramétrage des origines d'intervention */
+export async function soapRecupererOriginesIntervention(): Promise<OrigineIntervention[]> {
+  const result = await authenticatedSoapRequest(
+    'WSParametragePda.asmx',
+    `${NAMESPACE}RecupererParametrageOriginesIntervention`,
+    (token) => `<web:RecupererParametrageOriginesIntervention>
+      <web:beanIn>
+        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+      </web:beanIn>
+    </web:RecupererParametrageOriginesIntervention>`
+  );
+  if (result.status === 'ERROR') {
+    throw new Error(`RecupererParametrageOriginesIntervention échouée: [${result.code}] ${result.message}`);
+  }
+  return parseCodeLibelleList(result.raw, 'OrigineInterventionInfo');
+}
+
+/** Récupère le paramétrage des types de moyen */
+export async function soapRecupererTypesMoyen(): Promise<TypeMoyen[]> {
+  const result = await authenticatedSoapRequest(
+    'WSParametragePda.asmx',
+    `${NAMESPACE}RecupererParametrageTypesMoyen`,
+    (token) => `<web:RecupererParametrageTypesMoyen>
+      <web:beanIn>
+        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+      </web:beanIn>
+    </web:RecupererParametrageTypesMoyen>`
+  );
+  if (result.status === 'ERROR') {
+    throw new Error(`RecupererParametrageTypesMoyen échouée: [${result.code}] ${result.message}`);
+  }
+  return parseCodeLibelleList(result.raw, 'TypeMoyenInfo');
+}
+
+/** Charge tous les paramétrages PDA en parallèle */
+export async function soapLoadAllParametrage(): Promise<ParametragePda> {
+  const [cellules, famillesIntervention, originesIntervention, typesMoyen] = await Promise.all([
+    soapRecupererCellules().catch(() => []),
+    soapRecupererFamillesIntervention().catch(() => []),
+    soapRecupererOriginesIntervention().catch(() => []),
+    soapRecupererTypesMoyen().catch(() => []),
+  ]);
+  return { cellules, famillesIntervention, originesIntervention, typesMoyen };
+}
+
 // ─── Utility exports ────────────────────────────────────────────
 export { escapeXml, buildSoapEnvelope, extractTagValue, extractAllTags };
