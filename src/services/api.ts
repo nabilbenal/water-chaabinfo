@@ -171,9 +171,9 @@ export async function apiLoadData(tourneeId?: string, numTerminal?: string): Pro
     ]);
     const data = parseListeRelevesResponse(relevesXml);
     
-    // Store parametrage data into LoadedData.parametres as key-value pairs
+    // Attach parametrage PDA to loaded data
     if (parametrage) {
-      (data as any)._parametragePda = parametrage;
+      data.parametragePda = parametrage;
     }
     
     // 3. Validate loading
