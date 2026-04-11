@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Camera, ScanBarcode, Keyboard, MapPin, AlertTriangle, CheckCircle2, ChevronDown, X, Tag, Plus, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Camera, ScanBarcode, Keyboard, MapPin, AlertTriangle, CheckCircle2, ChevronDown, X, Tag, Plus, MessageSquare, Grid3X3, Wrench, Navigation, Cog } from 'lucide-react';
 import { takePhoto, getCurrentPosition } from '@/services/native';
 import GPSMap from '@/components/GPSMap';
 import type { Annotation } from '@/types/water';
@@ -34,6 +34,13 @@ export default function RelevePage() {
   const [comment, setComment] = useState(existingReleve?.commentaire || '');
   const [method, setMethod] = useState<'manuel' | 'scanner' | 'radio'>(existingReleve?.methode || 'manuel');
   const [showAnomalies, setShowAnomalies] = useState(false);
+
+  // Paramétrage PDA selections
+  const [codeCellule, setCodeCellule] = useState(existingReleve?.codeCellule || '');
+  const [codeFamille, setCodeFamille] = useState(existingReleve?.codeFamilleIntervention || '');
+  const [codeOrigine, setCodeOrigine] = useState(existingReleve?.codeOrigineIntervention || '');
+  const [codeTypeMoyen, setCodeTypeMoyen] = useState(existingReleve?.codeTypeMoyen || '');
+  const parametrage = loadedData?.parametragePda;
   const [saved, setSaved] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(existingReleve?.photoUri || null);
   const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -97,6 +104,10 @@ export default function RelevePage() {
       VAL_IDX_ANCIEN: ancienIndex,
       VAL_IDX_NOUVEAU: newIndex || undefined,
       COD_ANO_RLV: selectedAnomaly || undefined,
+      codeCellule: codeCellule || undefined,
+      codeFamilleIntervention: codeFamille || undefined,
+      codeOrigineIntervention: codeOrigine || undefined,
+      codeTypeMoyen: codeTypeMoyen || undefined,
       commentaire: comment || undefined,
       photoUri: photoUri || undefined,
       latitude: gpsCoords?.latitude,
@@ -368,6 +379,48 @@ export default function RelevePage() {
           )}
         </motion.div>
 
+        {/* Paramétrage PDA - Listes dynamiques */}
+        {parametrage && (
+          <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.28 }} className="space-y-2">
+            {parametrage.cellules.length > 0 && (
+              <ParamSelect
+                icon={<Grid3X3 className="w-4 h-4 text-primary" />}
+                label="Cellule"
+                value={codeCellule}
+                onChange={setCodeCellule}
+                options={parametrage.cellules}
+              />
+            )}
+            {parametrage.famillesIntervention.length > 0 && (
+              <ParamSelect
+                icon={<Wrench className="w-4 h-4 text-accent-foreground" />}
+                label="Famille d'intervention"
+                value={codeFamille}
+                onChange={setCodeFamille}
+                options={parametrage.famillesIntervention}
+              />
+            )}
+            {parametrage.originesIntervention.length > 0 && (
+              <ParamSelect
+                icon={<Navigation className="w-4 h-4 text-muted-foreground" />}
+                label="Origine d'intervention"
+                value={codeOrigine}
+                onChange={setCodeOrigine}
+                options={parametrage.originesIntervention}
+              />
+            )}
+            {parametrage.typesMoyen.length > 0 && (
+              <ParamSelect
+                icon={<Cog className="w-4 h-4 text-muted-foreground" />}
+                label="Type de moyen"
+                value={codeTypeMoyen}
+                onChange={setCodeTypeMoyen}
+                options={parametrage.typesMoyen}
+              />
+            )}
+          </motion.div>
+        )}
+
         {/* Comment */}
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
           <textarea
@@ -390,6 +443,33 @@ export default function RelevePage() {
           </button>
         </motion.div>
       </div>
+    </div>
+  );
+}
+
+function ParamSelect({ icon, label, value, onChange, options }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { code: string; libelle: string }[];
+}) {
+  return (
+    <div className="bg-card rounded-xl shadow-card border border-border p-3">
+      <div className="flex items-center gap-2 mb-2">
+        {icon}
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      </div>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+      >
+        <option value="">— Aucun —</option>
+        {options.map(o => (
+          <option key={o.code} value={o.code}>{o.code} – {o.libelle}</option>
+        ))}
+      </select>
     </div>
   );
 }
