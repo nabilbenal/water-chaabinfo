@@ -194,6 +194,10 @@ export interface ReleveLocal {
   VAL_IDX_NOUVEAU?: number;
   COD_ANO_RLV?: string;
   COD_ANN_RLV?: string;
+  codeCellule?: string;
+  codeFamilleIntervention?: string;
+  codeOrigineIntervention?: string;
+  codeTypeMoyen?: string;
   commentaire?: string;
   photoUri?: string;
   latitude?: number;
