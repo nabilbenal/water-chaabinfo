@@ -347,7 +347,81 @@ export default function AidePage() {
           <BulletItem>Si vous travaillez en équipe, communiquez qui modifie quelle section du code</BulletItem>
         </CollapsibleSection>
 
-        {/* Sécurité */}
+        {/* Workflow Pull Requests */}
+        <CollapsibleSection icon={<GitPullRequest className="w-5 h-5 text-info" />} title="Pull Requests & Branches" delay={0.345}>
+          <SubTitle>1. Choisir la bonne branche</SubTitle>
+          <p>Lovable synchronise automatiquement sur la branche par défaut (<code className="text-foreground bg-muted px-1 rounded">main</code> ou <code className="text-foreground bg-muted px-1 rounded">master</code>). Quand vous travaillez en local, suivez ces règles :</p>
+          <BulletItem><strong className="text-foreground">main / master</strong> : branche stable, reflète l'état de production. Ne poussez jamais directement dessus sans review.</BulletItem>
+          <BulletItem><strong className="text-foreground">feature/nom-de-la-feature</strong> : créez une branche dédiée pour chaque nouvelle fonctionnalité (ex: <code className="text-foreground bg-muted px-1 rounded">feature/scan-qrcode</code>).</BulletItem>
+          <BulletItem><strong className="text-foreground">fix/description-du-bug</strong> : utilisez une branche de correction pour les bugs (ex: <code className="text-foreground bg-muted px-1 rounded">fix/gps-timeout</code>).</BulletItem>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1 mt-1">
+            <p># Créer et basculer sur une nouvelle branche</p>
+            <p>git checkout -b feature/ma-fonctionnalite</p>
+            <p># Vérifier sur quelle branche vous êtes</p>
+            <p>git branch</p>
+          </div>
+
+          <SubTitle>2. Créer une pull request</SubTitle>
+          <p>Une <strong className="text-foreground">Pull Request (PR)</strong> permet de proposer vos modifications pour review avant de les fusionner dans la branche principale.</p>
+          <p className="mt-1"><strong className="text-foreground">Étape 1 — Pousser votre branche</strong></p>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>git add .</p>
+            <p>git commit -m "feat: ajout du scanner QR code"</p>
+            <p>git push -u origin feature/ma-fonctionnalite</p>
+          </div>
+          <p className="mt-1"><strong className="text-foreground">Étape 2 — Ouvrir la PR sur GitHub</strong></p>
+          <BulletItem>Allez sur le repository GitHub dans votre navigateur</BulletItem>
+          <BulletItem>GitHub affiche un bandeau jaune : <strong className="text-foreground">« Compare & pull request »</strong> — cliquez dessus</BulletItem>
+          <BulletItem>Sinon, allez dans l'onglet <strong className="text-foreground">Pull requests → New pull request</strong></BulletItem>
+          <BulletItem>Sélectionnez la <strong className="text-foreground">base</strong> (main) et la <strong className="text-foreground">compare</strong> (votre branche)</BulletItem>
+          <BulletItem>Remplissez le titre et la description : expliquez <em>ce que</em> fait le changement et <em>pourquoi</em></BulletItem>
+          <BulletItem>Cliquez sur <strong className="text-foreground">Create pull request</strong></BulletItem>
+          <p className="mt-1"><strong className="text-foreground">Étape 3 — Review et fusion</strong></p>
+          <BulletItem>Un collègue (ou vous-même) review le code, laisse des commentaires</BulletItem>
+          <BulletItem>Si des modifications sont demandées, faites les commits sur la même branche et poussez — la PR se met à jour automatiquement</BulletItem>
+          <BulletItem>Une fois approuvée, cliquez sur <strong className="text-foreground">Merge pull request</strong> puis <strong className="text-foreground">Confirm merge</strong></BulletItem>
+          <BulletItem>La branche principale est mise à jour. Lovable récupère automatiquement la nouvelle version lors du prochain sync</BulletItem>
+
+          <SubTitle>3. Résoudre un conflit de merge pas à pas</SubTitle>
+          <p>Un conflit survient quand <strong className="text-foreground">deux personnes ont modifié les mêmes lignes</strong> d'un fichier. Voici comment le résoudre :</p>
+          <p className="mt-1"><strong className="text-foreground">Étape 1 — Identifier le conflit</strong></p>
+          <BulletItem>Lors d'un <code className="text-foreground bg-muted px-1 rounded">git pull</code> ou <code className="text-foreground bg-muted px-1 rounded">git merge</code>, Git affiche :<br />
+            <code className="text-foreground bg-muted px-1 rounded">CONFLICT (content): Merge conflict in src/pages/MonFichier.tsx</code></BulletItem>
+          <BulletItem>Git marque les fichiers en conflit comme <strong className="text-foreground">« Unmerged »</strong></BulletItem>
+          <p className="mt-1"><strong className="text-foreground">Étape 2 — Ouvrir le fichier et repérer les marqueurs</strong></p>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</p>
+            <p>  // Code actuel sur la branche principale</p>
+            <p>=======</p>
+            <p>  // Code que vous essayez de fusionner</p>
+            <p>&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature/ma-fonctionnalite</p>
+          </div>
+          <BulletItem><strong className="text-foreground">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</strong> : code de la branche de destination (main)</BulletItem>
+          <BulletItem><strong className="text-foreground">=======</strong> : séparateur</BulletItem>
+          <BulletItem><strong className="text-foreground">&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature/...</strong> : code de votre branche</BulletItem>
+          <p className="mt-1"><strong className="text-foreground">Étape 3 — Choisir la version correcte</strong></p>
+          <BulletItem><strong className="text-foreground">Conserver la branche principale</strong> : supprimez tout ce qui est entre <code className="text-foreground bg-muted px-1 rounded">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> et <code className="text-foreground bg-muted px-1 rounded">=======</code>, ainsi que le marqueur <code className="text-foreground bg-muted px-1 rounded">&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> et ce qui suit</BulletItem>
+          <BulletItem><strong className="text-foreground">Conserver votre version</strong> : supprimez le marqueur <code className="text-foreground bg-muted px-1 rounded">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> et tout ce qui précède jusqu'à <code className="text-foreground bg-muted px-1 rounded">=======</code>, puis supprimez <code className="text-foreground bg-muted px-1 rounded">&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> et ce qui suit</BulletItem>
+          <BulletItem><strong className="text-foreground">Fusionner les deux</strong> : combinez manuellement le code des deux sections en gardant les parties utiles de chaque côté, puis supprimez tous les marqueurs</BulletItem>
+          <p className="mt-1"><strong className="text-foreground">Étape 4 — Valider la résolution</strong></p>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p># Vérifier qu'il ne reste plus de marqueurs</p>
+            <p>grep -r "<<<<<<<" src/ || echo "Aucun conflit détecté"</p>
+            <p># Ajouter le fichier résolu</p>
+            <p>git add src/pages/MonFichier.tsx</p>
+            <p># Valider le merge</p>
+            <p>git commit -m "merge: r├⌐solution du conflit sur MonFichier"</p>
+          </div>
+          <BulletItem>Testez toujours l'application après résolution : <code className="text-foreground bg-muted px-1 rounded">npm run build</code></BulletItem>
+
+          <SubTitle>Bonnes pratiques pour ├⌐viter les conflits</SubTitle>
+          <BulletItem><strong className="text-foreground">Pull fr├⌐quent</strong> : faites <code className="text-foreground bg-muted px-1 rounded">git pull origin main</code> avant de commencer votre travail et avant de pousser</BulletItem>
+          <BulletItem><strong className="text-foreground">Branches courtes</strong> : une branche par t├óche, fusionn├⌐e rapidement (1-3 jours max)</BulletItem>
+          <BulletItem><strong className="text-foreground">Communication</strong> : pr├⌐venez l'├⌐quipe quand vous modifiez un fichier partag├⌐ (ex: types, services communs)</BulletItem>
+          <BulletItem><strong className="text-foreground">Review rapide</strong> : ne laissez pas les PR stagner plus de 48h</BulletItem>
+        </CollapsibleSection>
+
+        {/* S├⌐curit├⌐ */}
         <CollapsibleSection icon={<Lock className="w-5 h-5 text-destructive" />} title="Sécurité & recommandations" delay={0.35}>
           <SubTitle>Sécurité</SubTitle>
           <BulletItem>HTTPS obligatoire pour les communications ERP</BulletItem>
