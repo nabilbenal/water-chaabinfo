@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, ChevronRight, Smartphone, MapPin, Camera, Wifi, WifiOff, Database, Shield, Upload, Download, BarChart3, HelpCircle, Info, Zap, FileText, Bug, Globe, Lock } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Smartphone, MapPin, Camera, Wifi, WifiOff, Database, Shield, Upload, Download, BarChart3, HelpCircle, Info, Zap, FileText, Bug, Globe, Lock, Github } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface SectionProps {
@@ -169,9 +169,24 @@ export default function AidePage() {
           <BulletItem>Xcode (pour build iOS, macOS uniquement)</BulletItem>
           <BulletItem>Un serveur ERP accessible avec les endpoints WS configurés</BulletItem>
 
-          <SubTitle>1. Cloner et installer</SubTitle>
+          <SubTitle>1. Connecter le projet à GitHub</SubTitle>
+          <p>Dans l'éditeur Lovable, connectez votre projet à GitHub pour générer un dépôt :</p>
+          <BulletItem>Cliquez sur le bouton <strong className="text-foreground">Plus (+)</strong> dans la zone de saisie du chat (en bas à gauche)</BulletItem>
+          <BulletItem>Sélectionnez <strong className="text-foreground">GitHub → Connecter le projet</strong></BulletItem>
+          <BulletItem>Autorisez l'application Lovable sur GitHub</BulletItem>
+          <BulletItem>Choisissez le compte ou l'organisation où créer le repository</BulletItem>
+          <BulletItem>Cliquez sur <strong className="text-foreground">Créer le repository</strong> — le code sera automatiquement synchronisé</BulletItem>
+          <p className="mt-1">Une fois connecté, la synchronisation est <strong className="text-foreground">bidirectionnelle</strong> : les modifications dans Lovable poussent vers GitHub, et les pushs depuis GitHub se reflètent dans Lovable.</p>
+
+          <SubTitle>2. Récupérer l'URL du dépôt</SubTitle>
+          <p>Une fois le repository créé, récupérez son URL :</p>
+          <BulletItem>Dans Lovable, allez dans <strong className="text-foreground">Paramètres du projet → GitHub</strong></BulletItem>
+          <BulletItem>L'URL du dépôt est affichée (ex: <code className="text-foreground bg-muted px-1 rounded">https://github.com/mon-org/releve-eau-mobile.git</code>)</BulletItem>
+
+          <SubTitle>3. Cloner et installer</SubTitle>
           <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
-            <p>git clone &lt;URL_DU_DEPOT&gt;</p>
+            <p># Cloner le repository (remplacez par votre URL)</p>
+            <p>git clone https://github.com/mon-org/releve-eau-mobile.git</p>
             <p>cd releve-eau-mobile</p>
             <p>npm install</p>
           </div>
