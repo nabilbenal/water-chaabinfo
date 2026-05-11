@@ -305,6 +305,48 @@ export default function AidePage() {
           </div>
         </CollapsibleSection>
 
+        {/* Dépannage GitHub */}
+        <CollapsibleSection icon={<Bug className="w-5 h-5 text-destructive" />} title="Dépannage GitHub" delay={0.34}>
+          <SubTitle>Erreur : Échec de l'authentification GitHub</SubTitle>
+          <p><strong className="text-foreground">Symptôme :</strong> L'écran d'autorisation GitHub se ferme immédiatement ou affiche « Access denied ».</p>
+          <p className="mt-1"><strong className="text-foreground">Solutions :</strong></p>
+          <BulletItem><strong className="text-foreground">Étape 1 :</strong> Vérifiez que vous êtes connecté à GitHub dans le même navigateur. Allez sur <code className="text-foreground bg-muted px-1 rounded">github.com</code> et connectez-vous si nécessaire.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 2 :</strong> Dans Lovable, ouvrez le <strong className="text-foreground">Plus (+)</strong> du chat → GitHub → <strong className="text-foreground">Reconnecter</strong>. Acceptez toutes les permissions demandées.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 3 :</strong> Si vous utilisez un compte d'organisation, demandez à l'administrateur d'approuver l'application Lovable dans les <strong className="text-foreground">Paramètres → Applications OAuth</strong> de l'organisation.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 4 :</strong> Videz le cache du navigateur (Ctrl+Shift+Suppr / Cmd+Shift+Suppr) et réessayez.</BulletItem>
+
+          <SubTitle>Erreur : Repository introuvable ou URL invalide</SubTitle>
+          <p><strong className="text-foreground">Symptôme :</strong> Le <code className="text-foreground bg-muted px-1 rounded">git clone</code> retourne « repository not found » ou une erreur 404.</p>
+          <p className="mt-1"><strong className="text-foreground">Solutions :</strong></p>
+          <BulletItem><strong className="text-foreground">Étape 1 :</strong> Dans Lovable, allez dans <strong className="text-foreground">Paramètres du projet → GitHub</strong> et copiez exactement l'URL affichée (format <code className="text-foreground bg-muted px-1 rounded">https://github.com/utilisateur/repo.git</code>).</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 2 :</strong> Vérifiez que le repository existe sur GitHub. Si vous voyez une page 404, le repo est peut-être privé ou a été supprimé.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 3 :</strong> Si le repo est privé, assurez-vous d'avoir les droits d'accès. Essayez avec HTTPS + token : remplacez l'URL par <code className="text-foreground bg-muted px-1 rounded">https://TOKEN@github.com/utilisateur/repo.git</code> ou configurez SSH.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 4 :</strong> Si vous avez renommé le projet dans Lovable, l'ancien nom peut encore être référencé. Déconnectez puis reconnectez GitHub pour régénérer le repository.</BulletItem>
+
+          <SubTitle>Erreur : Conflit de branches / synchronisation bloquée</SubTitle>
+          <p><strong className="text-foreground">Symptôme :</strong> Les modifications ne se synchronisent plus entre Lovable et GitHub, ou vous voyez des messages de conflit.</p>
+          <p className="mt-1"><strong className="text-foreground">Solutions :</strong></p>
+          <BulletItem><strong className="text-foreground">Étape 1 :</strong> Vérifiez la branche active. Dans Lovable, la synchronisation se fait sur la branche par défaut (<code className="text-foreground bg-muted px-1 rounded">main</code> ou <code className="text-foreground bg-muted px-1 rounded">master</code>). Ne travaillez pas sur une branche locale sans la lier à Lovable.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 2 :</strong> Si vous avez modifié le code localement et dans Lovable en parallèle, un conflit peut survenir. Ouvrez le terminal dans votre clone local et faites :<br />
+            <code className="text-foreground bg-muted px-1 rounded">git pull origin main</code> puis résolvez les conflits manuellement dans les fichiers marqués.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 3 :</strong> En cas de conflit persistant, sauvegardez vos modifications locales (<code className="text-foreground bg-muted px-1 rounded">git stash</code>), forcez la mise à jour depuis Lovable (<code className="text-foreground bg-muted px-1 rounded">git fetch origin &amp;&amp; git reset --hard origin/main</code>), puis réappliquez vos changements.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 4 :</strong> Si la synchronisation est complètement bloquée, allez dans <strong className="text-foreground">Paramètres du projet → GitHub</strong> dans Lovable, cliquez sur <strong className="text-foreground">Déconnecter</strong> puis reconnectez le projet. Le repository GitHub reste intact.</BulletItem>
+
+          <SubTitle>Erreur : Push refusé (Permission denied)</SubTitle>
+          <p><strong className="text-foreground">Symptôme :</strong> Vous ne pouvez pas pousser vos modifications locales vers GitHub.</p>
+          <p className="mt-1"><strong className="text-foreground">Solutions :</strong></p>
+          <BulletItem><strong className="text-foreground">Étape 1 :</strong> Vérifiez que vous avez le rôle <strong className="text-foreground">Write</strong> ou <strong className="text-foreground">Admin</strong> sur le repository GitHub (Settings → Manage access).</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 2 :</strong> Si vous clonez en HTTPS, configurez un <strong className="text-foreground">Personal Access Token (PAT)</strong> : GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → générez un token avec le scope <code className="text-foreground bg-muted px-1 rounded">repo</code>.</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 3 :</strong> Utilisez ce token à la place du mot de passe lors du <code className="text-foreground bg-muted px-1 rounded">git push</code> :<br />
+            <code className="text-foreground bg-muted px-1 rounded">git remote set-url origin https://TOKEN@github.com/utilisateur/repo.git</code></BulletItem>
+
+          <SubTitle>Bonnes pratiques</SubTitle>
+          <BulletItem>Ne modifiez jamais le même fichier simultanément dans Lovable et dans votre IDE local sans pull/push entre les deux</BulletItem>
+          <BulletItem>Faites des commits réguliers et petits pour limiter les conflits</BulletItem>
+          <BulletItem>Utilisez <code className="text-foreground bg-muted px-1 rounded">git status</code> avant chaque modification pour vérifier l'état de la branche</BulletItem>
+          <BulletItem>Si vous travaillez en équipe, communiquez qui modifie quelle section du code</BulletItem>
+        </CollapsibleSection>
+
         {/* Sécurité */}
         <CollapsibleSection icon={<Lock className="w-5 h-5 text-destructive" />} title="Sécurité & recommandations" delay={0.35}>
           <SubTitle>Sécurité</SubTitle>
