@@ -405,12 +405,12 @@ export default function AidePage() {
           <BulletItem><strong className="text-foreground">Fusionner les deux</strong> : combinez manuellement le code des deux sections en gardant les parties utiles de chaque côté, puis supprimez tous les marqueurs</BulletItem>
           <p className="mt-1"><strong className="text-foreground">Étape 4 — Valider la résolution</strong></p>
           <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
-            <p># Vérifier qu'il ne reste plus de marqueurs</p>
-            <p>grep -r "<<<<<<<" src/ || echo "Aucun conflit détecté"</p>
-            <p># Ajouter le fichier résolu</p>
+            <p>{"# Vérifier qu'il ne reste plus de marqueurs"}</p>
+            <p>{'grep -r "<<<<<<<" src/ || echo "Aucun conflit détecté"'}</p>
+            <p>{"# Ajouter le fichier résolu"}</p>
             <p>git add src/pages/MonFichier.tsx</p>
-            <p># Valider le merge</p>
-            <p>git commit -m "merge: r├⌐solution du conflit sur MonFichier"</p>
+            <p>{"# Valider le merge"}</p>
+            <p>{'git commit -m "merge: résolution du conflit sur MonFichier"'}</p>
           </div>
           <BulletItem>Testez toujours l'application après résolution : <code className="text-foreground bg-muted px-1 rounded">npm run build</code></BulletItem>
 
