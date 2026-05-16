@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, ChevronRight, Smartphone, MapPin, Camera, Wifi, WifiOff, Database, Shield, Upload, Download, BarChart3, HelpCircle, Info, Zap, FileText, Bug, Globe, Lock, Github, GitPullRequest } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Smartphone, MapPin, Camera, Wifi, WifiOff, Database, Shield, Upload, Download, BarChart3, HelpCircle, Info, Zap, FileText, Bug, Globe, Lock, Github, GitPullRequest, GitMerge } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface SectionProps {
@@ -419,6 +419,57 @@ export default function AidePage() {
           <BulletItem><strong className="text-foreground">Branches courtes</strong> : une branche par t├óche, fusionn├⌐e rapidement (1-3 jours max)</BulletItem>
           <BulletItem><strong className="text-foreground">Communication</strong> : pr├⌐venez l'├⌐quipe quand vous modifiez un fichier partag├⌐ (ex: types, services communs)</BulletItem>
           <BulletItem><strong className="text-foreground">Review rapide</strong> : ne laissez pas les PR stagner plus de 48h</BulletItem>
+        </CollapsibleSection>
+
+        {/* Résolution de conflit dans l'interface GitHub */}
+        <CollapsibleSection icon={<GitMerge className="w-5 h-5 text-warning" />} title="Résoudre un conflit dans l'interface GitHub" delay={0.348}>
+          <p>Quand une Pull Request affiche <strong className="text-foreground">« This branch has conflicts that must be resolved »</strong>, vous pouvez les résoudre directement depuis le navigateur, sans utiliser Git en ligne de commande.</p>
+
+          <SubTitle>1. Ouvrir l'éditeur de conflit</SubTitle>
+          <BulletItem>Ouvrez votre Pull Request sur GitHub</BulletItem>
+          <BulletItem>Descendez jusqu'à l'encadré rouge <strong className="text-foreground">« This branch has conflicts »</strong></BulletItem>
+          <BulletItem>Cliquez sur le bouton <strong className="text-foreground">Resolve conflicts</strong> (en haut à droite de l'encadré)</BulletItem>
+          <BulletItem>GitHub ouvre un éditeur de texte intégré listant tous les fichiers en conflit dans la barre latérale gauche</BulletItem>
+
+          <SubTitle>2. Comprendre les marqueurs de conflit</SubTitle>
+          <p>Chaque zone en conflit est délimitée par des marqueurs Git que vous devez supprimer :</p>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] my-2">
+            <p>{"<<<<<<< HEAD (votre branche de PR)"}</p>
+            <p>  // Votre version du code</p>
+            <p>=======</p>
+            <p>  // La version de la branche cible (ex: main)</p>
+            <p>{">>>>>>> main"}</p>
+          </div>
+          <BulletItem><code className="text-foreground bg-muted px-1 rounded">{"<<<<<<< HEAD"}</code> : début de votre version</BulletItem>
+          <BulletItem><code className="text-foreground bg-muted px-1 rounded">=======</code> : séparateur entre les deux versions</BulletItem>
+          <BulletItem><code className="text-foreground bg-muted px-1 rounded">{">>>>>>> main"}</code> : fin de la version distante</BulletItem>
+
+          <SubTitle>3. Éditer le fichier pour résoudre</SubTitle>
+          <BulletItem><strong className="text-foreground">Étape 1 :</strong> Lisez les deux versions et décidez du contenu final (garder l'une, l'autre, ou fusionner les deux)</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 2 :</strong> Supprimez les trois lignes de marqueurs (<code className="text-foreground bg-muted px-1 rounded">{"<<<<<<<"}</code>, <code className="text-foreground bg-muted px-1 rounded">=======</code>, <code className="text-foreground bg-muted px-1 rounded">{">>>>>>>"}</code>)</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 3 :</strong> Conservez uniquement le code que vous voulez garder, proprement formaté</BulletItem>
+          <BulletItem><strong className="text-foreground">Étape 4 :</strong> Répétez pour chaque zone de conflit (utilisez <kbd className="bg-muted px-1 rounded text-foreground">Ctrl/Cmd + F</kbd> et cherchez <code className="text-foreground bg-muted px-1 rounded">{"<<<<<<<"}</code> pour les retrouver toutes)</BulletItem>
+
+          <SubTitle>4. Marquer le fichier comme résolu</SubTitle>
+          <BulletItem>Une fois tous les marqueurs supprimés, cliquez sur <strong className="text-foreground">Mark as resolved</strong> (en haut à droite de l'éditeur)</BulletItem>
+          <BulletItem>Si plusieurs fichiers sont en conflit, sélectionnez le suivant dans la barre latérale et recommencez</BulletItem>
+          <BulletItem>Le bouton <strong className="text-foreground">Commit merge</strong> devient actif uniquement quand <strong className="text-foreground">tous</strong> les fichiers sont marqués résolus</BulletItem>
+
+          <SubTitle>5. Committer la résolution</SubTitle>
+          <BulletItem>Cliquez sur <strong className="text-foreground">Commit merge</strong></BulletItem>
+          <BulletItem>GitHub propose un message du type <code className="text-foreground bg-muted px-1 rounded">Merge branch 'main' into feature/ma-branche</code> — gardez-le ou personnalisez-le</BulletItem>
+          <BulletItem>Le commit de merge est automatiquement poussé sur la branche de la PR</BulletItem>
+
+          <SubTitle>6. Mettre à jour la Pull Request</SubTitle>
+          <BulletItem>Vous êtes redirigé vers la PR : l'encadré rouge disparaît et le bouton <strong className="text-foreground">Merge pull request</strong> redevient vert</BulletItem>
+          <BulletItem>Attendez la fin des vérifications automatiques (CI/CD, build Lovable) avant de fusionner</BulletItem>
+          <BulletItem>Si vous travaillez aussi en local, faites <code className="text-foreground bg-muted px-1 rounded">git pull</code> sur votre branche pour récupérer le commit de merge</BulletItem>
+          <BulletItem>Côté Lovable, la synchronisation bidirectionnelle reprend automatiquement après le merge</BulletItem>
+
+          <SubTitle>Quand utiliser cette méthode ?</SubTitle>
+          <BulletItem><strong className="text-foreground">Idéal pour :</strong> conflits simples (1 à 3 fichiers, quelques lignes), équipiers non techniques, poste sans Git installé</BulletItem>
+          <BulletItem><strong className="text-foreground">À éviter pour :</strong> conflits complexes sur de nombreux fichiers, fichiers binaires (images, PDF) — préférez alors la résolution en local avec un IDE</BulletItem>
+          <BulletItem><strong className="text-foreground">Astuce :</strong> le bouton <strong className="text-foreground">Resolve conflicts</strong> n'apparaît pas pour les conflits trop complexes — GitHub vous redirige alors vers les instructions en ligne de commande</BulletItem>
         </CollapsibleSection>
 
         {/* S├⌐curit├⌐ */}
