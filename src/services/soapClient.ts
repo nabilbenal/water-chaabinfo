@@ -20,18 +20,50 @@ const TOKEN_KEY = 'soap-token';
 let cachedConfig: SoapConfig | null = null;
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
+/**
+ * Valeurs par défaut injectées au build via les variables d'environnement Vite.
+ * - VITE_SOAP_BASE_URL : URL de base du serveur SOMEI (ex: https://somei.seaco.local/rec)
+ * - VITE_SOAP_WSDL_URL : URL explicite du WSDL (optionnel, sinon déduite de BASE_URL)
+ * - VITE_SOAP_CLIENT_ID / VITE_SOAP_ACCESS_KEY : identifiants par défaut (optionnels)
+ *
+ * Ces valeurs servent UNIQUEMENT de défauts : l'utilisateur peut toujours les
+ * surcharger depuis l'écran Profil > Configuration SOMEI (stockés en localStorage).
+ */
+export const SOAP_ENV_DEFAULTS = {
+  baseUrl: (import.meta.env.VITE_SOAP_BASE_URL as string | undefined)?.replace(/\/+$/, '') || '',
+  wsdlUrl: (import.meta.env.VITE_SOAP_WSDL_URL as string | undefined) || '',
+  clientId: (import.meta.env.VITE_SOAP_CLIENT_ID as string | undefined) || '',
+  accessKey: (import.meta.env.VITE_SOAP_ACCESS_KEY as string | undefined) || '',
+} as const;
+
+/** Retourne l'URL du WSDL (par défaut WSAcces.asmx?wsdl sur la base) */
+export function getWsdlUrl(baseUrl?: string): string {
+  if (SOAP_ENV_DEFAULTS.wsdlUrl) return SOAP_ENV_DEFAULTS.wsdlUrl;
+  const base = (baseUrl || getSoapConfig()?.serverUrl || SOAP_ENV_DEFAULTS.baseUrl || '').replace(/\/+$/, '');
+  return base ? `${base}/WSAcces.asmx?wsdl` : '';
+}
+
 /** Sauvegarde la configuration SOAP dans localStorage */
 export function saveSoapConfig(config: SoapConfig): void {
   cachedConfig = config;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
-/** Récupère la configuration SOAP */
+/** Récupère la configuration SOAP (priorité : localStorage > variables d'environnement) */
 export function getSoapConfig(): SoapConfig | null {
   if (cachedConfig) return cachedConfig;
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
     cachedConfig = JSON.parse(raw);
+    return cachedConfig;
+  }
+  // Repli sur les variables d'environnement si présentes
+  if (SOAP_ENV_DEFAULTS.baseUrl) {
+    cachedConfig = {
+      serverUrl: SOAP_ENV_DEFAULTS.baseUrl,
+      clientId: SOAP_ENV_DEFAULTS.clientId,
+      accessKey: SOAP_ENV_DEFAULTS.accessKey,
+    };
     return cachedConfig;
   }
   return null;

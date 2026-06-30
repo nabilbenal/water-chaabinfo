@@ -4,7 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
 import { toast } from 'sonner';
-import { getSoapConfig, saveSoapConfig, testSoapConnection, type SoapConfig } from '@/services/soapClient';
+import { getSoapConfig, saveSoapConfig, testSoapConnection, SOAP_ENV_DEFAULTS, getWsdlUrl, type SoapConfig } from '@/services/soapClient';
 
 export default function ProfilPage() {
   const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, loadedData } = useApp();
@@ -199,10 +199,12 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 function SoapConfigPanel() {
   const existing = getSoapConfig();
-  const [serverUrl, setServerUrl] = useState(existing?.serverUrl || 'http://10.53.64.61/rec');
-  const [clientId, setClientId] = useState(existing?.clientId || '');
-  const [accessKey, setAccessKey] = useState(existing?.accessKey || '');
+  const [serverUrl, setServerUrl] = useState(existing?.serverUrl || SOAP_ENV_DEFAULTS.baseUrl || 'http://10.53.64.61/rec');
+  const [clientId, setClientId] = useState(existing?.clientId || SOAP_ENV_DEFAULTS.clientId || '');
+  const [accessKey, setAccessKey] = useState(existing?.accessKey || SOAP_ENV_DEFAULTS.accessKey || '');
   const [testing, setTesting] = useState(false);
+  const wsdlUrl = getWsdlUrl(serverUrl);
+  const hasEnvDefaults = Boolean(SOAP_ENV_DEFAULTS.baseUrl);
 
   const handleSave = () => {
     saveSoapConfig({ serverUrl, clientId, accessKey });
@@ -232,12 +234,21 @@ function SoapConfigPanel() {
       <p className="text-sm font-medium text-foreground flex items-center gap-2">
         <Settings className="w-4 h-4 text-primary" /> Configuration SOMEI (SOAP)
       </p>
+      {hasEnvDefaults && (
+        <p className="text-[11px] text-muted-foreground bg-muted/40 rounded-md px-2 py-1.5 border border-border/50">
+          Valeurs par défaut chargées depuis <code className="font-mono">VITE_SOAP_BASE_URL</code> au build.
+          Vos saisies ci-dessous les surchargent.
+        </p>
+      )}
       <div className="space-y-2">
         <div>
-          <label className="text-xs text-muted-foreground">URL Serveur</label>
+          <label className="text-xs text-muted-foreground">URL Serveur (HTTP ou HTTPS)</label>
           <input value={serverUrl} onChange={e => setServerUrl(e.target.value)}
             className="w-full h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/30"
-            placeholder="http://10.53.64.61/rec" />
+            placeholder="https://somei.exemple.local/rec" />
+          {wsdlUrl && (
+            <p className="text-[10px] text-muted-foreground mt-1 font-mono truncate">WSDL : {wsdlUrl}</p>
+          )}
         </div>
         <div>
           <label className="text-xs text-muted-foreground">Client ID</label>
