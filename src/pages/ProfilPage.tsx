@@ -199,10 +199,12 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 function SoapConfigPanel() {
   const existing = getSoapConfig();
-  const [serverUrl, setServerUrl] = useState(existing?.serverUrl || 'http://10.53.64.61/rec');
-  const [clientId, setClientId] = useState(existing?.clientId || '');
-  const [accessKey, setAccessKey] = useState(existing?.accessKey || '');
+  const [serverUrl, setServerUrl] = useState(existing?.serverUrl || SOAP_ENV_DEFAULTS.baseUrl || 'http://10.53.64.61/rec');
+  const [clientId, setClientId] = useState(existing?.clientId || SOAP_ENV_DEFAULTS.clientId || '');
+  const [accessKey, setAccessKey] = useState(existing?.accessKey || SOAP_ENV_DEFAULTS.accessKey || '');
   const [testing, setTesting] = useState(false);
+  const wsdlUrl = getWsdlUrl(serverUrl);
+  const hasEnvDefaults = Boolean(SOAP_ENV_DEFAULTS.baseUrl);
 
   const handleSave = () => {
     saveSoapConfig({ serverUrl, clientId, accessKey });
