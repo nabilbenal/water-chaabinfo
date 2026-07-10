@@ -4,7 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
 import { toast } from 'sonner';
-import { getSoapConfig, saveSoapConfig, testSoapConnection, SOAP_ENV_DEFAULTS, getWsdlUrl, type SoapConfig } from '@/services/soapClient';
+import { getSoapConfig, saveSoapConfig, testSoapConnection, testWsdlAvailability, SOAP_ENV_DEFAULTS, getWsdlUrl, type SoapConfig, type WsdlTestResult } from '@/services/soapClient';
 
 export default function ProfilPage() {
   const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, loadedData } = useApp();
@@ -228,6 +228,25 @@ function SoapConfigPanel() {
     }
   };
 
+  const [wsdlTesting, setWsdlTesting] = useState(false);
+  const [wsdlResult, setWsdlResult] = useState<WsdlTestResult | null>(null);
+
+  const handleTestWsdl = async () => {
+    setWsdlTesting(true);
+    setWsdlResult(null);
+    try {
+      const res = await testWsdlAvailability(serverUrl);
+      setWsdlResult(res);
+      if (res.success) {
+        toast.success('WSDL disponible', { description: `HTTP ${res.status} — ${res.durationMs} ms` });
+      } else {
+        toast.error('WSDL indisponible', { description: res.error || `HTTP ${res.status ?? '—'} ${res.statusText ?? ''}` });
+      }
+    } finally {
+      setWsdlTesting(false);
+    }
+  };
+
   return (
     <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
       className="bg-card rounded-xl shadow-card p-4 border border-primary/30 space-y-3">
@@ -268,12 +287,48 @@ function SoapConfigPanel() {
           className="flex-1 py-2 rounded-lg bg-muted text-foreground text-xs font-medium">
           Sauvegarder
         </button>
+        <button onClick={handleTestWsdl} disabled={wsdlTesting || !serverUrl}
+          className="flex-1 py-2 rounded-lg bg-info/10 text-info border border-info/30 text-xs font-medium flex items-center justify-center gap-1 disabled:opacity-50">
+          {wsdlTesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileUp className="w-3 h-3" />}
+          {wsdlTesting ? 'WSDL...' : 'Tester WSDL'}
+        </button>
         <button onClick={handleTest} disabled={testing || !clientId || !accessKey}
           className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1 disabled:opacity-50">
           {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3" />}
-          {testing ? 'Test...' : 'Tester'}
+          {testing ? 'Test...' : 'Tester auth'}
         </button>
       </div>
+
+      {wsdlResult && (
+        <div className={`rounded-md border px-2.5 py-2 text-[11px] space-y-1 ${
+          wsdlResult.success
+            ? 'bg-success/10 border-success/30 text-success-foreground'
+            : 'bg-destructive/10 border-destructive/30 text-destructive'
+        }`}>
+          <div className="flex items-center gap-1.5 font-medium">
+            {wsdlResult.success
+              ? <CheckCircle className="w-3.5 h-3.5 text-success" />
+              : <AlertTriangle className="w-3.5 h-3.5 text-destructive" />}
+            <span>
+              {wsdlResult.success ? 'WSDL accessible' : 'WSDL inaccessible'}
+              {wsdlResult.status !== undefined && ` — HTTP ${wsdlResult.status} ${wsdlResult.statusText ?? ''}`}
+            </span>
+            <span className="ml-auto opacity-70">{wsdlResult.durationMs} ms</span>
+          </div>
+          {wsdlResult.url && (
+            <p className="font-mono truncate opacity-80" title={wsdlResult.url}>{wsdlResult.url}</p>
+          )}
+          {wsdlResult.contentType && (
+            <p className="opacity-70">Content-Type : <span className="font-mono">{wsdlResult.contentType}</span></p>
+          )}
+          {wsdlResult.isWsdl === false && wsdlResult.status !== undefined && (
+            <p className="opacity-80">La réponse ne contient pas de <code>&lt;wsdl:definitions&gt;</code> — endpoint incorrect ?</p>
+          )}
+          {wsdlResult.error && (
+            <p className="opacity-90">{wsdlResult.error}</p>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
