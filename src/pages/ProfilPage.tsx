@@ -363,6 +363,39 @@ function SoapConfigPanel() {
           )}
         </div>
       )}
+      </div>
+
+      {hasEnvCreds && (
+        <button
+          onClick={handleTestEnvCreds}
+          disabled={envTesting}
+          className="w-full py-2 rounded-lg bg-accent/10 text-accent border border-accent/30 text-xs font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
+          title={`Utilise VITE_SOAP_CLIENT_ID (${SOAP_ENV_DEFAULTS.clientId}) et VITE_SOAP_ACCESS_KEY sur ${envBaseUrl}`}
+        >
+          {envTesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+          {envTesting ? 'Test identifiants ENV...' : 'Tester identifiants (ENV)'}
+        </button>
+      )}
+
+      {envResult && (
+        <div className={`rounded-md border px-2.5 py-2 text-[11px] space-y-1 ${
+          envResult.success
+            ? 'bg-success/10 border-success/30 text-success-foreground'
+            : 'bg-destructive/10 border-destructive/30 text-destructive'
+        }`}>
+          <div className="flex items-center gap-1.5 font-medium">
+            {envResult.success
+              ? <CheckCircle className="w-3.5 h-3.5 text-success" />
+              : <AlertTriangle className="w-3.5 h-3.5 text-destructive" />}
+            <span>{envResult.success ? 'Authentification SOAP réussie' : 'Authentification SOAP échouée'}</span>
+            <span className="ml-auto opacity-70">{envResult.durationMs} ms</span>
+          </div>
+          <p className="opacity-90">{envResult.message}</p>
+          <p className="opacity-70">
+            Client ID : <span className="font-mono">{SOAP_ENV_DEFAULTS.clientId}</span> · Serveur : <span className="font-mono">{envBaseUrl}</span>
+          </p>
+        </div>
+      )}
     </motion.div>
   );
 }
