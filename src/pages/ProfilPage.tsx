@@ -228,6 +228,25 @@ function SoapConfigPanel() {
     }
   };
 
+  const [wsdlTesting, setWsdlTesting] = useState(false);
+  const [wsdlResult, setWsdlResult] = useState<WsdlTestResult | null>(null);
+
+  const handleTestWsdl = async () => {
+    setWsdlTesting(true);
+    setWsdlResult(null);
+    try {
+      const res = await testWsdlAvailability(serverUrl);
+      setWsdlResult(res);
+      if (res.success) {
+        toast.success('WSDL disponible', { description: `HTTP ${res.status} — ${res.durationMs} ms` });
+      } else {
+        toast.error('WSDL indisponible', { description: res.error || `HTTP ${res.status ?? '—'} ${res.statusText ?? ''}` });
+      }
+    } finally {
+      setWsdlTesting(false);
+    }
+  };
+
   return (
     <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
       className="bg-card rounded-xl shadow-card p-4 border border-primary/30 space-y-3">
