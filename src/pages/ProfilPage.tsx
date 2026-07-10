@@ -247,6 +247,40 @@ function SoapConfigPanel() {
     }
   };
 
+  const [envTesting, setEnvTesting] = useState(false);
+  const [envResult, setEnvResult] = useState<{ success: boolean; message: string; durationMs: number } | null>(null);
+  const hasEnvCreds = Boolean(SOAP_ENV_DEFAULTS.clientId && SOAP_ENV_DEFAULTS.accessKey);
+  const envBaseUrl = SOAP_ENV_DEFAULTS.baseUrl || serverUrl;
+
+  const handleTestEnvCreds = async () => {
+    setEnvTesting(true);
+    setEnvResult(null);
+    const start = performance.now();
+    try {
+      const result = await testSoapConnection({
+        serverUrl: envBaseUrl,
+        clientId: SOAP_ENV_DEFAULTS.clientId,
+        accessKey: SOAP_ENV_DEFAULTS.accessKey,
+      });
+      const durationMs = Math.round(performance.now() - start);
+      setEnvResult({ ...result, durationMs });
+      if (result.success) {
+        toast.success('Identifiants ENV valides', { description: result.message });
+      } else {
+        toast.error('Identifiants ENV invalides', { description: result.message });
+      }
+    } catch (e) {
+      const durationMs = Math.round(performance.now() - start);
+      setEnvResult({
+        success: false,
+        message: e instanceof Error ? e.message : 'Erreur inconnue',
+        durationMs,
+      });
+    } finally {
+      setEnvTesting(false);
+    }
+  };
+
   return (
     <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
       className="bg-card rounded-xl shadow-card p-4 border border-primary/30 space-y-3">
