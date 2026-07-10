@@ -277,6 +277,68 @@ export async function testSoapConnection(config: SoapConfig): Promise<{
   }
 }
 
+// ─── Test WSDL availability (HTTP GET) ──────────────────────────
+export interface WsdlTestResult {
+  success: boolean;
+  url: string;
+  status?: number;
+  statusText?: string;
+  contentType?: string | null;
+  isWsdl?: boolean;
+  durationMs: number;
+  error?: string;
+}
+
+/**
+ * Vérifie la disponibilité du WSDL en effectuant un GET simple.
+ * Retourne le code HTTP, le content-type et indique si la réponse ressemble à du WSDL.
+ */
+export async function testWsdlAvailability(baseUrl?: string): Promise<WsdlTestResult> {
+  const url = getWsdlUrl(baseUrl);
+  const start = performance.now();
+  if (!url) {
+    return {
+      success: false,
+      url: '',
+      durationMs: 0,
+      error: 'Aucune URL WSDL configurée (VITE_SOAP_WSDL_URL ou VITE_SOAP_BASE_URL manquante).',
+    };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(url, { method: 'GET', signal: controller.signal });
+    const contentType = res.headers.get('content-type');
+    let isWsdl = false;
+    try {
+      const text = await res.text();
+      isWsdl = /wsdl:definitions|<definitions[\s>]/i.test(text);
+    } catch { /* ignore body read errors */ }
+    return {
+      success: res.ok && isWsdl,
+      url,
+      status: res.status,
+      statusText: res.statusText,
+      contentType,
+      isWsdl,
+      durationMs: Math.round(performance.now() - start),
+    };
+  } catch (error) {
+    const isAbort = error instanceof Error && error.name === 'AbortError';
+    return {
+      success: false,
+      url,
+      durationMs: Math.round(performance.now() - start),
+      error: isAbort
+        ? 'Délai dépassé (10s) — serveur injoignable ou bloqué (CORS / Mixed Content ?).'
+        : error instanceof Error ? error.message : 'Erreur réseau inconnue',
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // ─── WSRelevePda: TourneeEnCours ────────────────────────────────
 export async function soapTourneeEnCours(numTerminal: string): Promise<string> {
   const result = await authenticatedSoapRequest(
