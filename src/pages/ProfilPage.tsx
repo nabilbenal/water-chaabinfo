@@ -287,12 +287,48 @@ function SoapConfigPanel() {
           className="flex-1 py-2 rounded-lg bg-muted text-foreground text-xs font-medium">
           Sauvegarder
         </button>
+        <button onClick={handleTestWsdl} disabled={wsdlTesting || !serverUrl}
+          className="flex-1 py-2 rounded-lg bg-info/10 text-info border border-info/30 text-xs font-medium flex items-center justify-center gap-1 disabled:opacity-50">
+          {wsdlTesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileUp className="w-3 h-3" />}
+          {wsdlTesting ? 'WSDL...' : 'Tester WSDL'}
+        </button>
         <button onClick={handleTest} disabled={testing || !clientId || !accessKey}
           className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center gap-1 disabled:opacity-50">
           {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3" />}
-          {testing ? 'Test...' : 'Tester'}
+          {testing ? 'Test...' : 'Tester auth'}
         </button>
       </div>
+
+      {wsdlResult && (
+        <div className={`rounded-md border px-2.5 py-2 text-[11px] space-y-1 ${
+          wsdlResult.success
+            ? 'bg-success/10 border-success/30 text-success-foreground'
+            : 'bg-destructive/10 border-destructive/30 text-destructive'
+        }`}>
+          <div className="flex items-center gap-1.5 font-medium">
+            {wsdlResult.success
+              ? <CheckCircle className="w-3.5 h-3.5 text-success" />
+              : <AlertTriangle className="w-3.5 h-3.5 text-destructive" />}
+            <span>
+              {wsdlResult.success ? 'WSDL accessible' : 'WSDL inaccessible'}
+              {wsdlResult.status !== undefined && ` — HTTP ${wsdlResult.status} ${wsdlResult.statusText ?? ''}`}
+            </span>
+            <span className="ml-auto opacity-70">{wsdlResult.durationMs} ms</span>
+          </div>
+          {wsdlResult.url && (
+            <p className="font-mono truncate opacity-80" title={wsdlResult.url}>{wsdlResult.url}</p>
+          )}
+          {wsdlResult.contentType && (
+            <p className="opacity-70">Content-Type : <span className="font-mono">{wsdlResult.contentType}</span></p>
+          )}
+          {wsdlResult.isWsdl === false && wsdlResult.status !== undefined && (
+            <p className="opacity-80">La réponse ne contient pas de <code>&lt;wsdl:definitions&gt;</code> — endpoint incorrect ?</p>
+          )}
+          {wsdlResult.error && (
+            <p className="opacity-90">{wsdlResult.error}</p>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
