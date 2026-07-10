@@ -363,7 +363,8 @@ function SoapConfigPanel() {
           )}
         </div>
       )}
-      </div>
+
+
 
       {hasEnvCreds && (
         <button
