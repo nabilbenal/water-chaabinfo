@@ -226,6 +226,91 @@ export default function AidePage() {
           <BulletItem>L'app fonctionne en mode hors-ligne après installation</BulletItem>
         </CollapsibleSection>
 
+        {/* Installation Mobile détaillée */}
+        <CollapsibleSection icon={<Smartphone className="w-5 h-5 text-primary" />} title="Installation Mobile (Android) — pas à pas" delay={0.315}>
+          <SubTitle>0. Prérequis à installer une fois</SubTitle>
+          <BulletItem><strong className="text-foreground">Node.js ≥ 20 LTS</strong> + npm (vérifier : <code className="bg-muted px-1 rounded">node -v</code> et <code className="bg-muted px-1 rounded">npm -v</code>)</BulletItem>
+          <BulletItem><strong className="text-foreground">JDK 17</strong> (OpenJDK Temurin recommandé) — Capacitor 8 ne compile pas avec JDK 8/11</BulletItem>
+          <BulletItem><strong className="text-foreground">Android Studio</strong> (Hedgehog 2023.1+) avec SDK Platform 34 (Android 14) et Build-Tools 34.0.0</BulletItem>
+          <BulletItem>Variables d'environnement : <code className="bg-muted px-1 rounded">JAVA_HOME</code>, <code className="bg-muted px-1 rounded">ANDROID_HOME</code> (dossier <code className="bg-muted px-1 rounded">Sdk</code>), et ajouter <code className="bg-muted px-1 rounded">platform-tools</code> au PATH</BulletItem>
+          <BulletItem>Un téléphone Android en <strong className="text-foreground">mode développeur</strong> + <strong className="text-foreground">Débogage USB</strong> activé (ou un émulateur AVD)</BulletItem>
+
+          <SubTitle>1. Récupérer le projet depuis GitHub</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>git clone https://github.com/&lt;votre-org&gt;/&lt;repo&gt;.git</p>
+            <p>cd &lt;repo&gt;</p>
+            <p>npm ci        # installation reproductible via package-lock.json</p>
+          </div>
+          <BulletItem>Si le dossier <code className="bg-muted px-1 rounded">android/</code> n'existe pas encore, initialisez-le : <code className="bg-muted px-1 rounded">npx cap add android</code></BulletItem>
+
+          <SubTitle>2. Configurer capacitor.config.json</SubTitle>
+          <BulletItem>Pour un APK <strong className="text-foreground">standalone</strong> (production, hors-ligne) : <strong className="text-foreground">supprimez</strong> le bloc <code className="bg-muted px-1 rounded">server.url</code> pointant vers Lovable, sinon l'APK chargera la preview en ligne au lieu du bundle local.</BulletItem>
+          <BulletItem>Pour du <strong className="text-foreground">hot-reload</strong> sur téléphone pendant le dev : gardez <code className="bg-muted px-1 rounded">server.url</code> vers l'URL Lovable (ou l'IP du PC en LAN, ex : <code className="bg-muted px-1 rounded">http://192.168.1.20:8080</code>) avec <code className="bg-muted px-1 rounded">cleartext: true</code>.</BulletItem>
+          <BulletItem>Vérifiez <code className="bg-muted px-1 rounded">appId</code> et <code className="bg-muted px-1 rounded">appName</code> — ils déterminent le nom du paquet Android.</BulletItem>
+
+          <SubTitle>3. Build web + synchronisation native</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p># 1. Compile le front dans dist/</p>
+            <p>npm run build</p>
+            <p></p>
+            <p># 2. Copie dist/ dans android/app/src/main/assets/public</p>
+            <p># et met à jour les plugins natifs (Camera, Geolocation, ...)</p>
+            <p>npx cap sync android</p>
+          </div>
+          <BulletItem><code className="bg-muted px-1 rounded">cap sync</code> = <code className="bg-muted px-1 rounded">cap copy</code> + <code className="bg-muted px-1 rounded">cap update</code>. À relancer <strong className="text-foreground">après chaque</strong> <code className="bg-muted px-1 rounded">npm run build</code> ou ajout de plugin.</BulletItem>
+          <BulletItem>Si erreur <code className="bg-muted px-1 rounded">SDK location not found</code> : créez <code className="bg-muted px-1 rounded">android/local.properties</code> avec <code className="bg-muted px-1 rounded">sdk.dir=/chemin/vers/Sdk</code>.</BulletItem>
+
+          <SubTitle>4. Permissions Android (AndroidManifest.xml)</SubTitle>
+          <BulletItem>Vérifiez que <code className="bg-muted px-1 rounded">android/app/src/main/AndroidManifest.xml</code> contient : <code className="bg-muted px-1 rounded">CAMERA</code>, <code className="bg-muted px-1 rounded">ACCESS_FINE_LOCATION</code>, <code className="bg-muted px-1 rounded">ACCESS_COARSE_LOCATION</code>, <code className="bg-muted px-1 rounded">INTERNET</code>.</BulletItem>
+          <BulletItem>Pour appeler un serveur SOMEI en HTTP (non HTTPS) : ajoutez <code className="bg-muted px-1 rounded">android:usesCleartextTraffic="true"</code> dans la balise <code className="bg-muted px-1 rounded">&lt;application&gt;</code>, ou un fichier <code className="bg-muted px-1 rounded">network_security_config.xml</code> qui autorise l'IP interne.</BulletItem>
+
+          <SubTitle>5. Ouvrir Android Studio</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>npx cap open android</p>
+          </div>
+          <BulletItem>Attendez la fin du <strong className="text-foreground">Gradle sync</strong> (barre en bas, peut prendre 5-10 min au premier lancement — Gradle télécharge les dépendances).</BulletItem>
+          <BulletItem>Si erreur <strong className="text-foreground">"Unsupported Java"</strong> : File → Settings → Build Tools → Gradle → <strong className="text-foreground">Gradle JDK = 17</strong>.</BulletItem>
+
+          <SubTitle>6a. Tester sur téléphone/émulateur (debug)</SubTitle>
+          <BulletItem>Branchez le téléphone (USB), acceptez l'invite <em>Autoriser le débogage USB</em>.</BulletItem>
+          <BulletItem>Dans Android Studio, sélectionnez l'appareil dans la barre du haut puis cliquez le bouton <strong className="text-foreground">▶ Run 'app'</strong>. L'app se compile, s'installe et se lance automatiquement.</BulletItem>
+          <BulletItem>Alternative ligne de commande : <code className="bg-muted px-1 rounded">npx cap run android</code>.</BulletItem>
+
+          <SubTitle>6b. Générer l'APK de debug (partage rapide)</SubTitle>
+          <BulletItem>Menu <strong className="text-foreground">Build → Build Bundle(s) / APK(s) → Build APK(s)</strong>.</BulletItem>
+          <BulletItem>APK produit : <code className="bg-muted px-1 rounded">android/app/build/outputs/apk/debug/app-debug.apk</code>.</BulletItem>
+          <BulletItem>⚠️ Un APK debug n'est <strong className="text-foreground">pas signé pour production</strong> — usage interne / tests uniquement.</BulletItem>
+
+          <SubTitle>7. Générer l'APK/AAB signé (release)</SubTitle>
+          <BulletItem>Créez une clé une seule fois : <code className="bg-muted px-1 rounded">keytool -genkey -v -keystore releve-eau.keystore -alias releve -keyalg RSA -keysize 2048 -validity 10000</code></BulletItem>
+          <BulletItem>Dans Android Studio : <strong className="text-foreground">Build → Generate Signed Bundle / APK</strong> → choisir <strong>APK</strong> (installation directe) ou <strong>AAB</strong> (Play Store).</BulletItem>
+          <BulletItem>Renseignez le keystore, alias, mot de passe, choisissez <strong>release</strong> → Finish.</BulletItem>
+          <BulletItem>Sortie : <code className="bg-muted px-1 rounded">android/app/release/app-release.apk</code>.</BulletItem>
+
+          <SubTitle>8. Installer l'APK sur un téléphone</SubTitle>
+          <BulletItem>Via USB : <code className="bg-muted px-1 rounded">adb install -r app-release.apk</code></BulletItem>
+          <BulletItem>Sans PC : transférez le fichier (email, WhatsApp, clé USB OTG), ouvrez-le et acceptez l'installation depuis <strong>Sources inconnues</strong> (Paramètres → Sécurité).</BulletItem>
+          <BulletItem>Au premier lancement, l'app demande les autorisations <strong>Caméra</strong> et <strong>Localisation</strong> — acceptez pour utiliser toutes les fonctions.</BulletItem>
+
+          <SubTitle>9. Cycle de mise à jour</SubTitle>
+          <div className="bg-muted/50 rounded-lg p-2 font-mono text-[10px] text-foreground space-y-1">
+            <p>git pull</p>
+            <p>npm ci                # si package.json a changé</p>
+            <p>npm run build</p>
+            <p>npx cap sync android</p>
+            <p># puis rebuild APK depuis Android Studio</p>
+          </div>
+          <BulletItem>Incrémentez <code className="bg-muted px-1 rounded">versionCode</code> et <code className="bg-muted px-1 rounded">versionName</code> dans <code className="bg-muted px-1 rounded">android/app/build.gradle</code> à chaque release, sinon Android refuse la mise à jour.</BulletItem>
+
+          <SubTitle>Dépannage fréquent</SubTitle>
+          <BulletItem><strong className="text-foreground">"Failed to install"</strong> : conflit de signature → désinstallez d'abord l'ancienne version (<code className="bg-muted px-1 rounded">adb uninstall app.lovable...</code>).</BulletItem>
+          <BulletItem><strong className="text-foreground">Écran blanc au démarrage</strong> : <code className="bg-muted px-1 rounded">server.url</code> pointe encore vers Lovable et le téléphone n'a pas internet → retirez la clé et rebuildez.</BulletItem>
+          <BulletItem><strong className="text-foreground">Caméra/GPS ne répondent pas</strong> : permission refusée → Paramètres → Applications → Relève d'Eau → Autorisations.</BulletItem>
+          <BulletItem><strong className="text-foreground">"CLEARTEXT communication not permitted"</strong> : votre ERP est en HTTP → activez <code className="bg-muted px-1 rounded">usesCleartextTraffic</code> ou passez le serveur en HTTPS.</BulletItem>
+          <BulletItem><strong className="text-foreground">Gradle build lent/échoue</strong> : videz le cache <code className="bg-muted px-1 rounded">./gradlew clean</code> dans <code className="bg-muted px-1 rounded">android/</code>, puis relancez.</BulletItem>
+        </CollapsibleSection>
+
+
         {/* Chargement & Déchargement WS */}
         <CollapsibleSection icon={<Globe className="w-5 h-5 text-primary" />} title="Chargement & déchargement (serveur WS)" delay={0.32}>
           <SubTitle>Architecture de communication</SubTitle>
