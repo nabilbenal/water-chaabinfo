@@ -22,20 +22,21 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "type": {
-              "default": "all",
-              "description": "Type de codes à retourner",
               "type": "string",
               "enum": [
                 "anomalie",
                 "annulation",
                 "all"
-              ]
+              ],
+              "default": "all",
+              "description": "Type de codes à retourner"
             }
-          }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       },
@@ -49,7 +50,6 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "ancienIndex": {
@@ -63,16 +63,18 @@
               "description": "Nouvel index relevé en m³"
             },
             "seuilAlerte": {
-              "default": 200,
-              "description": "Consommation en m³ au-delà de laquelle un signalement est émis",
               "type": "number",
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "default": 200,
+              "description": "Consommation en m³ au-delà de laquelle un signalement est émis"
             }
           },
           "required": [
             "ancienIndex",
             "nouvelIndex"
-          ]
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       }
