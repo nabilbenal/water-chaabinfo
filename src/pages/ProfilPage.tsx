@@ -364,6 +364,8 @@ function SoapConfigPanel() {
         </div>
       )}
 
+      {wsdlResult && !wsdlResult.success && <WsdlDiagnostics url={wsdlResult.url} />}
+
 
 
       {hasEnvCreds && (
@@ -464,5 +466,52 @@ function ParametragePdaPanel({ parametrage }: { parametrage: import('@/types/wat
         ))}
       </div>
     </motion.div>
+  );
+}
+
+function WsdlDiagnostics({ url }: { url: string }) {
+  const isHttp = url.startsWith('http://');
+  const pageIsHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+  const mixedContent = isHttp && pageIsHttps;
+  let host = '';
+  try { host = new URL(url).hostname; } catch { /* ignore */ }
+  const isPrivateIp = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.)/.test(host);
+
+  const items: { title: string; detail: string; active: boolean }[] = [
+    {
+      title: 'Mixed Content (HTTPS → HTTP)',
+      detail: "La page est servie en HTTPS mais le WSDL est en HTTP : le navigateur bloque l'appel avant même le réseau. Solution : exposer SOMEI derrière un reverse-proxy HTTPS, ou ouvrir l'app en HTTP sur le LAN / utiliser l'APK Android (cleartext autorisé).",
+      active: mixedContent,
+    },
+    {
+      title: 'Adresse IP privée (LAN)',
+      detail: `${host} est une adresse interne : elle n'est joignable que depuis un poste du réseau SEACO ou via VPN. L'aperçu cloud ne peut pas l'atteindre.`,
+      active: isPrivateIp,
+    },
+    {
+      title: 'CORS non configuré sur IIS',
+      detail: "Le serveur doit renvoyer Access-Control-Allow-Origin, autoriser la méthode OPTIONS et les en-têtes Content-Type + SOAPAction, sinon « Failed to fetch » apparaît même si le service répond.",
+      active: true,
+    },
+    {
+      title: 'Service SOMEI arrêté ou URL erronée',
+      detail: "Testez l'URL directement dans un onglet du navigateur depuis un poste du LAN : si le XML WSDL s'affiche, le serveur est OK et le blocage vient du navigateur (HTTPS/CORS).",
+      active: true,
+    },
+  ];
+
+  return (
+    <div className="rounded-md border border-warning/30 bg-warning/10 px-2.5 py-2 space-y-2">
+      <p className="text-[11px] font-medium text-foreground flex items-center gap-1.5">
+        <HelpCircle className="w-3.5 h-3.5 text-warning" /> Causes probables & solutions
+      </p>
+      <ul className="space-y-1.5">
+        {items.filter(i => i.active).map((i) => (
+          <li key={i.title} className="text-[11px] text-muted-foreground">
+            <span className="text-foreground font-medium">{i.title} — </span>{i.detail}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
