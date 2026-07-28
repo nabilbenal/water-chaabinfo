@@ -364,7 +364,7 @@ function SoapConfigPanel() {
         </div>
       )}
 
-      {wsdlResult && !wsdlResult.success && <WsdlDiagnostics url={wsdlResult.url} /></>}
+      {wsdlResult && !wsdlResult.success && <WsdlDiagnostics url={wsdlResult.url} />}
 
 
 
