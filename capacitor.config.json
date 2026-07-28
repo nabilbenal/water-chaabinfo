@@ -3,8 +3,17 @@
   "appName": "Relève d'Eau Mobile",
   "webDir": "dist",
   "server": {
-    "url": "https://3a09cb4d-4794-4122-821e-ea1465d0326d.lovableproject.com?forceHideBadge=true",
-    "cleartext": true
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": [
+      "10.53.64.61",
+      "10.53.64.61:*",
+      "10.53.*.*",
+      "192.168.*.*"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true
   },
   "plugins": {
     "Camera": {
