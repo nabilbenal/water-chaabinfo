@@ -4,6 +4,8 @@
  * et la transformation des données entre objets internes et XML.
  */
 
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
+
 // ─── Configuration ──────────────────────────────────────────────
 export interface SoapConfig {
   /** URL de base du serveur SOMEI (ex: http://10.53.64.61/rec) */
@@ -123,6 +125,15 @@ interface SoapResponse {
   raw: string;
 }
 
+function buildEndpointUrl(baseUrl: string, endpoint: string): string {
+  return `${baseUrl.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
+}
+
+function nativeHeader(headers: Record<string, string>, name: string): string | null {
+  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase());
+  return entry?.[1] ?? null;
+}
+
 async function soapRequest(
   endpoint: string,
   soapAction: string,
@@ -135,20 +146,41 @@ async function soapRequest(
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
-    const response = await fetch(`${config.serverUrl}/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/soap+xml; charset=utf-8',
-        SOAPAction: soapAction,
-      },
-      body: envelope,
-      signal: controller.signal,
-    });
+    const url = buildEndpointUrl(config.serverUrl, endpoint);
+    let status: number;
+    let xml: string;
 
-    const xml = await response.text();
+    if (Capacitor.isNativePlatform()) {
+      const response = await CapacitorHttp.request({
+        url,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/soap+xml; charset=utf-8',
+          SOAPAction: soapAction,
+        },
+        data: envelope,
+        responseType: 'text',
+        connectTimeout: 30000,
+        readTimeout: 30000,
+      });
+      status = response.status;
+      xml = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+    } else {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/soap+xml; charset=utf-8',
+          SOAPAction: soapAction,
+        },
+        body: envelope,
+        signal: controller.signal,
+      });
+      status = response.status;
+      xml = await response.text();
+    }
 
-    if (!response.ok) {
-      throw new Error(`Erreur serveur SOAP: ${response.status} — ${xml.substring(0, 200)}`);
+    if (status < 200 || status >= 300) {
+      throw new Error(`Erreur serveur SOAP: ${status} — ${xml.substring(0, 200)}`);
     }
 
     const wsStatus = extractTagValue(xml, 'WSStatus') || 'ERROR';
@@ -308,18 +340,39 @@ export async function testWsdlAvailability(baseUrl?: string): Promise<WsdlTestRe
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
-    const res = await fetch(url, { method: 'GET', signal: controller.signal });
-    const contentType = res.headers.get('content-type');
+    let status: number;
+    let statusText: string;
+    let contentType: string | null;
+    let text: string;
+
+    if (Capacitor.isNativePlatform()) {
+      const res = await CapacitorHttp.get({
+        url,
+        responseType: 'text',
+        connectTimeout: 10000,
+        readTimeout: 10000,
+      });
+      status = res.status;
+      statusText = status >= 200 && status < 300 ? 'OK' : 'HTTP Error';
+      contentType = nativeHeader(res.headers, 'content-type');
+      text = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+    } else {
+      const res = await fetch(url, { method: 'GET', signal: controller.signal });
+      status = res.status;
+      statusText = res.statusText;
+      contentType = res.headers.get('content-type');
+      text = await res.text();
+    }
+
     let isWsdl = false;
     try {
-      const text = await res.text();
       isWsdl = /wsdl:definitions|<definitions[\s>]/i.test(text);
     } catch { /* ignore body read errors */ }
     return {
-      success: res.ok && isWsdl,
+      success: status >= 200 && status < 300 && isWsdl,
       url,
-      status: res.status,
-      statusText: res.statusText,
+      status,
+      statusText,
       contentType,
       isWsdl,
       durationMs: Math.round(performance.now() - start),
