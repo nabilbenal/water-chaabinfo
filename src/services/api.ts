@@ -211,36 +211,39 @@ export async function apiUnloadData(
   }
 
   if (currentMode === 'soap') {
-    const { soapDechargementReleves } = await import('./soapClient');
+    const { soapDechargementReleves, toOracleDate } = await import('./soapClient');
     const terminal = numTerminal || 'PDA001';
-    
-    // Map ReleveConsommation to RelevePdaOut format
+
+    // Map ReleveConsommation to RelevePdaOut format (schéma SOMEI réel)
     const relevesOut: import('./soapClient').RelevePdaOut[] = releves.map((r, i) => {
       // Find matching abonne in loadedData for additional fields
       const abo = loadedData?.abonnes?.find(a => a.NUM_PNT_DRT_ABO === r.NUM_PNT_DRT);
+      const pnt = loadedData?.pointsDroit?.find(p => p.NUM_PNT_DRT === r.NUM_PNT_DRT);
+      const elt = loadedData?.elementsCompteur?.find(e => e.NUM_APT === abo?.NUM_APT);
+      const cpt = loadedData?.compteurs?.find(c => c.NUM_APT === abo?.NUM_APT);
+      const ordre = pnt?.ANC_NUM_ORD_REL_PNT_DRT || String(abo?.NUM_ORD_REL_ABO ?? abo?.ORDRE ?? i + 1);
       return {
-        ORDRE: abo?.ORDRE || i + 1,
-        COD_PRT_1_PNT_DRT: abo?.COD_PAL_PAL_ABO || '',
-        ANC_NUM_ORD_REL_PNT_DRT: String(abo?.NUM_ORD_REL_ABO || ''),
-        COD_ELT_APT: abo?.COD_TYP_RES || '',
-        COD_MDL_ELT_APT: '',
-        NUM_SER_ELT_APT: abo?.NUM_PHY_APT_ABO || '',
-        COD_MDL_APT_APT: abo?.NUM_APT || '',
+        ORDRE: ordre,
+        COD_PRT_1_PNT_DRT: pnt?.COD_PRT_1_PNT_DRT || '',
+        ANC_NUM_ORD_REL_PNT_DRT: ordre,
+        COD_ELT_APT: elt?.COD_ELT_APT || '',
+        COD_MDL_ELT_APT: elt?.COD_MDL_ELT_APT || '',
+        NUM_SER_ELT_APT: elt?.NUM_SER_ELT_APT || '',
+        COD_MDL_APT_APT: cpt?.COD_MDL_APT_APT || '',
         NumeroCommune: abo?.NUM_COM || 0,
         NomCommune: abo?.NOM_COM || '',
-        NumeroPhysiqueRegroupant: abo?.NUM_PHY_APT_RGR || '',
+        NumeroPhysiqueRegroupant: abo?.NUM_PHY_APT_RGR || abo?.NUM_SEC_RGR_ABO || '',
         ConsommationReleve: {
-          PER_HIS_RLV: r.PER_HIS_RLV,
-          ANN_HIS_RLV: r.ANN_HIS_RLV,
-          NUM_PNT_DRT: r.NUM_PNT_DRT,
+          VAL_IDX_CSO_RLV: r.VAL_IDX_CSO_RLV,
           COD_ANO_RLV: r.COD_ANO_RLV,
           COD_ANN_RLV: r.COD_ANN_RLV,
-          DAT_RLV_CSO_RLV: r.DAT_RLV_CSO_RLV,
-          VAL_IDX_CSO_RLV: r.VAL_IDX_CSO_RLV,
+          DAT_RLV_CSO_RLV: toOracleDate(r.DAT_RLV_CSO_RLV),
+          COD_ORI_IDX: '',
           CMT_RLR: r.CMT_RLR,
         },
       };
     });
+
     
     await soapDechargementReleves(terminal, relevesOut, false);
     return {
