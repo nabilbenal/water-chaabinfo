@@ -21,6 +21,11 @@ interface DataContextType {
   unloadData: () => Promise<void>;
   importJSON: (jsonString: string) => void;
   importSDF: (file: File) => Promise<void>;
+  /** Import auto : détecte .sdf ou .json et convertit en JSON interne */
+  importFile: (file: File) => Promise<void>;
+  /** Conversion JSON -> SDF et téléchargement du fichier de déchargement */
+  exportSDF: () => string;
+
   addReleve: (releve: ReleveLocal) => void;
   getAbonneByPDR: (numPntDrt: string) => Abonne | undefined;
   getStats: () => DashboardStats;
