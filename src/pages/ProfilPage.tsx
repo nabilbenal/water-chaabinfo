@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
+import { User, LogOut, Droplets, Smartphone, Shield, FileUp, FileDown, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSoapConfig, saveSoapConfig, testSoapConnection, testWsdlAvailability, SOAP_ENV_DEFAULTS, getWsdlUrl, type SoapConfig, type WsdlTestResult } from '@/services/soapClient';
 
