@@ -173,6 +173,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLastLoadDate(new Date().toISOString());
   }, []);
 
+  // Import automatique : .sdf -> conversion binaire/texte -> JSON, sinon JSON direct
+  const importFile = useCallback(async (file: File) => {
+    const isSdf = /\.sdf$/i.test(file.name);
+    if (isSdf) {
+      const { data } = await parseSdfToJson(file);
+      setLoadedData(data);
+    } else {
+      const text = await file.text();
+      setLoadedData(parseLoadedDataFromJSON(text));
+    }
+    setLastLoadDate(new Date().toISOString());
+  }, []);
+
+  // Conversion JSON -> SDF (déchargement)
+  const exportSDF = useCallback(() => {
+    return exportSdf(loadedData, releves, {
+      terminal: agent?.mobile,
+      tournee: agent?.tournee,
+    });
+  }, [loadedData, releves, agent]);
+
+
+
   const addReleve = useCallback((releve: ReleveLocal) => {
     setReleves(prev => {
       const existing = prev.findIndex(r => r.NUM_PNT_DRT === releve.NUM_PNT_DRT);
