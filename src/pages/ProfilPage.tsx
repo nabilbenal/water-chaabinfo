@@ -2,15 +2,45 @@ import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, LogOut, Droplets, Smartphone, Shield, FileUp, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
+import { User, LogOut, Droplets, Smartphone, Shield, FileUp, FileDown, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSoapConfig, saveSoapConfig, testSoapConnection, testWsdlAvailability, SOAP_ENV_DEFAULTS, getWsdlUrl, type SoapConfig, type WsdlTestResult } from '@/services/soapClient';
 
 export default function ProfilPage() {
-  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, loadedData } = useApp();
+  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, importFile, exportSDF, loadedData } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sdfInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  const handleImportAuto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await importFile(file);
+      toast.success('Import réussi', {
+        description: /\.sdf$/i.test(file.name)
+          ? `${file.name} converti en JSON`
+          : `${file.name} importé`,
+      });
+    } catch (err) {
+      toast.error('Erreur d\'import', {
+        description: err instanceof Error ? err.message : 'Fichier invalide',
+      });
+    }
+    e.target.value = '';
+  };
+
+  const handleExportSDF = () => {
+    try {
+      const name = exportSDF();
+      toast.success('Export SDF généré', { description: name });
+    } catch (err) {
+      toast.error('Erreur export SDF', {
+        description: err instanceof Error ? err.message : 'Conversion impossible',
+      });
+    }
+  };
+
 
   const formatDate = (d: string | null) => {
     if (!d) return 'Jamais';
@@ -133,27 +163,29 @@ export default function ProfilPage() {
         {/* Paramétrage PDA SOMEI */}
         {loadedData?.parametragePda && <ParametragePdaPanel parametrage={loadedData.parametragePda} />}
 
-        {/* Import JSON */}
+        {/* Import / Export */}
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
-          <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-          <input ref={sdfInputRef} type="file" accept=".sdf" onChange={handleImportSDF} className="hidden" />
+          <input ref={fileInputRef} type="file" accept=".json,.sdf" onChange={handleImportAuto} className="hidden" />
           <div className="flex gap-2">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 bg-card rounded-xl shadow-card p-4 border border-border flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
-            >
-              <FileUp className="w-5 h-5 text-info" />
-              <span className="text-xs font-medium text-foreground">Import JSON</span>
-            </button>
-            <button
-              onClick={() => sdfInputRef.current?.click()}
               className="flex-1 bg-card rounded-xl shadow-card p-4 border border-primary/30 flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
             >
               <FileUp className="w-5 h-5 text-primary" />
-              <span className="text-xs font-medium text-foreground">Import SDF</span>
+              <span className="text-xs font-medium text-foreground">Import SDF / JSON</span>
+              <span className="text-[10px] text-muted-foreground">Conversion auto en JSON</span>
+            </button>
+            <button
+              onClick={handleExportSDF}
+              className="flex-1 bg-card rounded-xl shadow-card p-4 border border-border flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              <FileDown className="w-5 h-5 text-success" />
+              <span className="text-xs font-medium text-foreground">Export SDF</span>
+              <span className="text-[10px] text-muted-foreground">Déchargement JSON → SDF</span>
             </button>
           </div>
         </motion.div>
+
 
         {/* Aide & À propos */}
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>

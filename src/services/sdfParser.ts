@@ -13,7 +13,25 @@ interface ParseResult {
 export async function parseSdfToJson(file: File): Promise<ParseResult> {
   const buffer = await file.arrayBuffer();
   const raw = new Uint8Array(buffer);
+
+  // ===== Cas 1 : fichier .sdf "texte" (UTF-8 avec BOM) généré par l'app ou l'ERP =====
+  const head = new TextDecoder('utf-8').decode(raw.slice(0, 64)).replace(/^\uFEFF/, '').trimStart();
+  if (head.startsWith('{') || head.startsWith('[')) {
+    const { parseLoadedDataFromJSON } = await import('./api');
+    const content = new TextDecoder('utf-8').decode(raw).replace(/^\uFEFF/, '');
+    const parsed = JSON.parse(content);
+    const source = parsed && typeof parsed === 'object' && parsed.tables ? parsed.tables : parsed;
+    const data = parseLoadedDataFromJSON(JSON.stringify(source));
+    const stats: Record<string, number> = {};
+    for (const [key, val] of Object.entries(data)) {
+      if (Array.isArray(val)) stats[key] = val.length;
+    }
+    return { data, stats };
+  }
+
+  // ===== Cas 2 : fichier .sdf binaire (SQL Server Compact) =====
   const text = new TextDecoder('latin1').decode(raw);
+
 
   // ===== ABO (Abonnés) =====
   const aboRecords: LoadedData['abonnes'] = [];

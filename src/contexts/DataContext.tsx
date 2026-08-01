@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import type { Abonne, Tournee, AnomalieReleve, AnnulationReleve, ReleveLocal, LoadedData, DashboardStats, ReleveConsommation } from '@/types/water';
 import { apiLoadData, apiUnloadData, parseLoadedDataFromJSON } from '@/services/api';
 import { parseSdfToJson } from '@/services/sdfParser';
+import { exportSdf } from '@/services/sdfWriter';
+
 import {
   saveLoadedData, getLoadedData, clearLoadedData,
   saveReleves, getReleves,
@@ -21,6 +23,11 @@ interface DataContextType {
   unloadData: () => Promise<void>;
   importJSON: (jsonString: string) => void;
   importSDF: (file: File) => Promise<void>;
+  /** Import auto : détecte .sdf ou .json et convertit en JSON interne */
+  importFile: (file: File) => Promise<void>;
+  /** Conversion JSON -> SDF et téléchargement du fichier de déchargement */
+  exportSDF: () => string;
+
   addReleve: (releve: ReleveLocal) => void;
   getAbonneByPDR: (numPntDrt: string) => Abonne | undefined;
   getStats: () => DashboardStats;
@@ -146,15 +153,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }));
 
       await apiUnloadData(relevesCSO, photos, agent?.mobile, loadedData);
+
+      // Conversion automatique JSON -> SDF (fichier de déchargement pour l'ERP)
+      try {
+        exportSdf(loadedData, releves.filter(r => !r.synced), {
+          terminal: agent?.mobile,
+          tournee: agent?.tournee,
+        });
+      } catch (e) {
+        console.warn('Génération SDF échouée:', e);
+      }
+
       setReleves(prev => prev.map(r => ({ ...r, synced: true })));
       setLastUnloadDate(new Date().toISOString());
+
     } catch (error) {
       console.error('Erreur déchargement:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
-  }, [releves, loadedData]);
+  }, [releves, loadedData, agent]);
 
   const importJSON = useCallback((jsonString: string) => {
     const data = parseLoadedDataFromJSON(jsonString);
@@ -167,6 +186,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoadedData(data);
     setLastLoadDate(new Date().toISOString());
   }, []);
+
+  // Import automatique : .sdf -> conversion binaire/texte -> JSON, sinon JSON direct
+  const importFile = useCallback(async (file: File) => {
+    const isSdf = /\.sdf$/i.test(file.name);
+    if (isSdf) {
+      const { data } = await parseSdfToJson(file);
+      setLoadedData(data);
+    } else {
+      const text = await file.text();
+      setLoadedData(parseLoadedDataFromJSON(text));
+    }
+    setLastLoadDate(new Date().toISOString());
+  }, []);
+
+  // Conversion JSON -> SDF (déchargement)
+  const exportSDF = useCallback(() => {
+    return exportSdf(loadedData, releves, {
+      terminal: agent?.mobile,
+      tournee: agent?.tournee,
+    });
+  }, [loadedData, releves, agent]);
+
+
 
   const addReleve = useCallback((releve: ReleveLocal) => {
     setReleves(prev => {
@@ -201,7 +243,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       loadedData, abonnes, tournees,
       anomalies: anomaliesData, annulations: annulationsData,
       releves,
-      loadData, unloadData, importJSON, importSDF, addReleve, getAbonneByPDR, getStats,
+      loadData, unloadData, importJSON, importSDF, importFile, exportSDF, addReleve, getAbonneByPDR, getStats,
       isLoading, isDataLoaded: !!loadedData,
       lastLoadDate, lastUnloadDate,
     }}>
