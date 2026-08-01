@@ -448,7 +448,7 @@ export async function soapValideChargement(numTerminal: string): Promise<void> {
 
 // ─── WSRelevePda: DechargementReleves ───────────────────────────
 export interface RelevePdaOut {
-  ORDRE: number;
+  ORDRE: number | string;
   COD_PRT_1_PNT_DRT: string;
   ANC_NUM_ORD_REL_PNT_DRT: string;
   COD_ELT_APT: string;
@@ -459,15 +459,23 @@ export interface RelevePdaOut {
   NomCommune: string;
   NumeroPhysiqueRegroupant: string;
   ConsommationReleve?: {
-    PER_HIS_RLV: number;
-    ANN_HIS_RLV: number;
-    NUM_PNT_DRT: string;
+    VAL_IDX_CSO_RLV?: number;
     COD_ANO_RLV?: string;
     COD_ANN_RLV?: string;
+    /** Format Oracle attendu: dd/MM/yyyy HH:mm:ss */
     DAT_RLV_CSO_RLV?: string;
-    VAL_IDX_CSO_RLV?: number;
+    COD_ORI_IDX?: string;
     CMT_RLR?: string;
+    /** Photo encodée en base64 (sans préfixe data:) */
+    PHOTO?: string;
   };
+}
+
+/** Formate une date ISO/Date vers le format Oracle attendu par SOMEI. */
+export function toOracleDate(input?: string | Date): string {
+  const d = input ? new Date(input) : new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
 function buildRelevePdaXml(r: RelevePdaOut): string {
@@ -476,19 +484,18 @@ function buildRelevePdaXml(r: RelevePdaOut): string {
   if (r.ConsommationReleve) {
     const c = r.ConsommationReleve;
     csoXml = `<ConsommationReleve xmlns="${ns}">
-      <PER_HIS_RLV>${c.PER_HIS_RLV}</PER_HIS_RLV>
-      <ANN_HIS_RLV>${c.ANN_HIS_RLV}</ANN_HIS_RLV>
-      <NUM_PNT_DRT>${escapeXml(c.NUM_PNT_DRT)}</NUM_PNT_DRT>
-      ${c.COD_ANO_RLV ? `<COD_ANO_RLV>${escapeXml(c.COD_ANO_RLV)}</COD_ANO_RLV>` : ''}
-      ${c.COD_ANN_RLV ? `<COD_ANN_RLV>${escapeXml(c.COD_ANN_RLV)}</COD_ANN_RLV>` : ''}
-      ${c.DAT_RLV_CSO_RLV ? `<DAT_RLV_CSO_RLV>${escapeXml(c.DAT_RLV_CSO_RLV)}</DAT_RLV_CSO_RLV>` : ''}
-      ${c.VAL_IDX_CSO_RLV !== undefined ? `<VAL_IDX_CSO_RLV>${c.VAL_IDX_CSO_RLV}</VAL_IDX_CSO_RLV>` : ''}
-      ${c.CMT_RLR ? `<CMT_RLR>${escapeXml(c.CMT_RLR)}</CMT_RLR>` : ''}
+      <VAL_IDX_CSO_RLV xmlns="${ns}">${c.VAL_IDX_CSO_RLV ?? ''}</VAL_IDX_CSO_RLV>
+      <COD_ANO_RLV xmlns="${ns}">${escapeXml(c.COD_ANO_RLV ?? '')}</COD_ANO_RLV>
+      <COD_ANN_RLV xmlns="${ns}">${escapeXml(c.COD_ANN_RLV ?? '')}</COD_ANN_RLV>
+      <DAT_RLV_CSO_RLV xmlns="${ns}">${escapeXml(c.DAT_RLV_CSO_RLV || toOracleDate())}</DAT_RLV_CSO_RLV>
+      <COD_ORI_IDX xmlns="${ns}">${escapeXml(c.COD_ORI_IDX ?? '')}</COD_ORI_IDX>
+      <CMT_RLR xmlns="${ns}">${escapeXml(c.CMT_RLR ?? '')}</CMT_RLR>
+      <PHOTO xmlns="${ns}">${c.PHOTO ?? ''}</PHOTO>
     </ConsommationReleve>`;
   }
 
   return `<RelevePdaInfo>
-    <ORDRE xmlns="${ns}">${r.ORDRE}</ORDRE>
+    <ORDRE xmlns="${ns}">${escapeXml(String(r.ORDRE ?? ''))}</ORDRE>
     <COD_PRT_1_PNT_DRT xmlns="${ns}">${escapeXml(r.COD_PRT_1_PNT_DRT)}</COD_PRT_1_PNT_DRT>
     <ANC_NUM_ORD_REL_PNT_DRT xmlns="${ns}">${escapeXml(r.ANC_NUM_ORD_REL_PNT_DRT)}</ANC_NUM_ORD_REL_PNT_DRT>
     <COD_ELT_APT xmlns="${ns}">${escapeXml(r.COD_ELT_APT)}</COD_ELT_APT>
@@ -503,6 +510,7 @@ function buildRelevePdaXml(r: RelevePdaOut): string {
     <NumeroPhysiqueRegroupant xmlns="${ns}">${escapeXml(r.NumeroPhysiqueRegroupant)}</NumeroPhysiqueRegroupant>
   </RelevePdaInfo>`;
 }
+
 
 export async function soapDechargementReleves(
   numTerminal: string,
