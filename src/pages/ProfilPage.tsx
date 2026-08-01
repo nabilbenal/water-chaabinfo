@@ -7,10 +7,40 @@ import { toast } from 'sonner';
 import { getSoapConfig, saveSoapConfig, testSoapConnection, testWsdlAvailability, SOAP_ENV_DEFAULTS, getWsdlUrl, type SoapConfig, type WsdlTestResult } from '@/services/soapClient';
 
 export default function ProfilPage() {
-  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, loadedData } = useApp();
+  const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, importFile, exportSDF, loadedData } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sdfInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  const handleImportAuto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await importFile(file);
+      toast.success('Import réussi', {
+        description: /\.sdf$/i.test(file.name)
+          ? `${file.name} converti en JSON`
+          : `${file.name} importé`,
+      });
+    } catch (err) {
+      toast.error('Erreur d\'import', {
+        description: err instanceof Error ? err.message : 'Fichier invalide',
+      });
+    }
+    e.target.value = '';
+  };
+
+  const handleExportSDF = () => {
+    try {
+      const name = exportSDF();
+      toast.success('Export SDF généré', { description: name });
+    } catch (err) {
+      toast.error('Erreur export SDF', {
+        description: err instanceof Error ? err.message : 'Conversion impossible',
+      });
+    }
+  };
+
 
   const formatDate = (d: string | null) => {
     if (!d) return 'Jamais';
