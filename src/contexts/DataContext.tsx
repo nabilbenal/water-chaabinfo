@@ -153,8 +153,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }));
 
       await apiUnloadData(relevesCSO, photos, agent?.mobile, loadedData);
+
+      // Conversion automatique JSON -> SDF (fichier de déchargement pour l'ERP)
+      try {
+        exportSdf(loadedData, releves.filter(r => !r.synced), {
+          terminal: agent?.mobile,
+          tournee: agent?.tournee,
+        });
+      } catch (e) {
+        console.warn('Génération SDF échouée:', e);
+      }
+
       setReleves(prev => prev.map(r => ({ ...r, synced: true })));
       setLastUnloadDate(new Date().toISOString());
+
     } catch (error) {
       console.error('Erreur déchargement:', error);
       throw error;
