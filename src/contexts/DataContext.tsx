@@ -173,7 +173,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [releves, loadedData]);
+  }, [releves, loadedData, agent]);
 
   const importJSON = useCallback((jsonString: string) => {
     const data = parseLoadedDataFromJSON(jsonString);
