@@ -448,7 +448,7 @@ export async function soapValideChargement(numTerminal: string): Promise<void> {
 
 // ─── WSRelevePda: DechargementReleves ───────────────────────────
 export interface RelevePdaOut {
-  ORDRE: number;
+  ORDRE: number | string;
   COD_PRT_1_PNT_DRT: string;
   ANC_NUM_ORD_REL_PNT_DRT: string;
   COD_ELT_APT: string;
@@ -459,15 +459,23 @@ export interface RelevePdaOut {
   NomCommune: string;
   NumeroPhysiqueRegroupant: string;
   ConsommationReleve?: {
-    PER_HIS_RLV: number;
-    ANN_HIS_RLV: number;
-    NUM_PNT_DRT: string;
+    VAL_IDX_CSO_RLV?: number;
     COD_ANO_RLV?: string;
     COD_ANN_RLV?: string;
+    /** Format Oracle attendu: dd/MM/yyyy HH:mm:ss */
     DAT_RLV_CSO_RLV?: string;
-    VAL_IDX_CSO_RLV?: number;
+    COD_ORI_IDX?: string;
     CMT_RLR?: string;
+    /** Photo encodée en base64 (sans préfixe data:) */
+    PHOTO?: string;
   };
+}
+
+/** Formate une date ISO/Date vers le format Oracle attendu par SOMEI. */
+export function toOracleDate(input?: string | Date): string {
+  const d = input ? new Date(input) : new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
 function buildRelevePdaXml(r: RelevePdaOut): string {
@@ -476,19 +484,18 @@ function buildRelevePdaXml(r: RelevePdaOut): string {
   if (r.ConsommationReleve) {
     const c = r.ConsommationReleve;
     csoXml = `<ConsommationReleve xmlns="${ns}">
-      <PER_HIS_RLV>${c.PER_HIS_RLV}</PER_HIS_RLV>
-      <ANN_HIS_RLV>${c.ANN_HIS_RLV}</ANN_HIS_RLV>
-      <NUM_PNT_DRT>${escapeXml(c.NUM_PNT_DRT)}</NUM_PNT_DRT>
-      ${c.COD_ANO_RLV ? `<COD_ANO_RLV>${escapeXml(c.COD_ANO_RLV)}</COD_ANO_RLV>` : ''}
-      ${c.COD_ANN_RLV ? `<COD_ANN_RLV>${escapeXml(c.COD_ANN_RLV)}</COD_ANN_RLV>` : ''}
-      ${c.DAT_RLV_CSO_RLV ? `<DAT_RLV_CSO_RLV>${escapeXml(c.DAT_RLV_CSO_RLV)}</DAT_RLV_CSO_RLV>` : ''}
-      ${c.VAL_IDX_CSO_RLV !== undefined ? `<VAL_IDX_CSO_RLV>${c.VAL_IDX_CSO_RLV}</VAL_IDX_CSO_RLV>` : ''}
-      ${c.CMT_RLR ? `<CMT_RLR>${escapeXml(c.CMT_RLR)}</CMT_RLR>` : ''}
+      <VAL_IDX_CSO_RLV xmlns="${ns}">${c.VAL_IDX_CSO_RLV ?? ''}</VAL_IDX_CSO_RLV>
+      <COD_ANO_RLV xmlns="${ns}">${escapeXml(c.COD_ANO_RLV ?? '')}</COD_ANO_RLV>
+      <COD_ANN_RLV xmlns="${ns}">${escapeXml(c.COD_ANN_RLV ?? '')}</COD_ANN_RLV>
+      <DAT_RLV_CSO_RLV xmlns="${ns}">${escapeXml(c.DAT_RLV_CSO_RLV || toOracleDate())}</DAT_RLV_CSO_RLV>
+      <COD_ORI_IDX xmlns="${ns}">${escapeXml(c.COD_ORI_IDX ?? '')}</COD_ORI_IDX>
+      <CMT_RLR xmlns="${ns}">${escapeXml(c.CMT_RLR ?? '')}</CMT_RLR>
+      <PHOTO xmlns="${ns}">${c.PHOTO ?? ''}</PHOTO>
     </ConsommationReleve>`;
   }
 
   return `<RelevePdaInfo>
-    <ORDRE xmlns="${ns}">${r.ORDRE}</ORDRE>
+    <ORDRE xmlns="${ns}">${escapeXml(String(r.ORDRE ?? ''))}</ORDRE>
     <COD_PRT_1_PNT_DRT xmlns="${ns}">${escapeXml(r.COD_PRT_1_PNT_DRT)}</COD_PRT_1_PNT_DRT>
     <ANC_NUM_ORD_REL_PNT_DRT xmlns="${ns}">${escapeXml(r.ANC_NUM_ORD_REL_PNT_DRT)}</ANC_NUM_ORD_REL_PNT_DRT>
     <COD_ELT_APT xmlns="${ns}">${escapeXml(r.COD_ELT_APT)}</COD_ELT_APT>
@@ -503,6 +510,7 @@ function buildRelevePdaXml(r: RelevePdaOut): string {
     <NumeroPhysiqueRegroupant xmlns="${ns}">${escapeXml(r.NumeroPhysiqueRegroupant)}</NumeroPhysiqueRegroupant>
   </RelevePdaInfo>`;
 }
+
 
 export async function soapDechargementReleves(
   numTerminal: string,
@@ -533,75 +541,154 @@ export async function soapDechargementReleves(
 
 // ─── XML → LoadedData parser ────────────────────────────────────
 /**
- * Parse the ListeReleves SOAP response XML into a LoadedData structure.
- * Extracts RelevePdaInfo elements and maps them to Abonne records.
+ * Parse la réponse ListeReleves en LoadedData.
+ *
+ * Les noms de balises suivent le schéma réel SOMEI (RelevePdaInfo + ConsommationReleve),
+ * identiques à ceux consommés par le client Android Kotlin de référence :
+ * NUM_PNT_DRT_ABO, NUM_CTA_ABO, RAI_SOC_CLI_ABO, NOM_RUE_LIV_ABO, NO_RUE_LIV_ABO, …
  */
 export function parseListeRelevesResponse(xml: string): import('@/types/water').LoadedData {
   const abonnes: import('@/types/water').Abonne[] = [];
-  
-  // Extract all RelevePdaInfo blocks
-  const blockRegex = /<RelevePdaInfo>([\s\S]*?)<\/RelevePdaInfo>/gi;
+  const consommations: import('@/types/water').Consommation[] = [];
+  const pointsDroit: import('@/types/water').PointDroit[] = [];
+  const compteurs: import('@/types/water').Compteur[] = [];
+  const elementsCompteur: import('@/types/water').ElementCompteur[] = [];
+
+  // Extract all RelevePdaInfo blocks (tolère un préfixe de namespace)
+  const blockRegex = /<(?:\w+:)?RelevePdaInfo(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?RelevePdaInfo>/gi;
   let blockMatch: RegExpExecArray | null;
-  
+
   while ((blockMatch = blockRegex.exec(xml)) !== null) {
     const block = blockMatch[1];
-    const tag = (name: string) => {
-      const r = new RegExp(`<${name}[^>]*>([^<]*)</${name}>`, 'i');
-      const m = block.match(r);
-      return m ? m[1].trim() : '';
+    const tag = (...names: string[]) => {
+      for (const name of names) {
+        const r = new RegExp(`<(?:\\w+:)?${name}(?:\\s[^>]*)?>([\\s\\S]*?)</(?:\\w+:)?${name}>`, 'i');
+        const m = block.match(r);
+        if (m && m[1].trim()) return decodeXml(m[1].trim());
+      }
+      return '';
     };
-    
+    const num = (...names: string[]) => {
+      const v = tag(...names).replace(',', '.');
+      const n = Number(v);
+      return v !== '' && Number.isFinite(n) ? n : undefined;
+    };
+
+    const numPntDrt = tag('NUM_PNT_DRT_ABO', 'NUM_PNT_DRT', 'numPntDrt');
+    if (!numPntDrt) continue;
+
+    const ordre = num('ANC_NUM_ORD_REL_PNT_DRT', 'NUM_ORD_REL_ABO', 'ORDRE') ?? 0;
+
     abonnes.push({
-      NUM_TRN_ABO: tag('NUM_TRN') || '',
-      NUM_SEC_LIV_ABO: tag('COD_PAL_SEC_GEO') || '',
-      NUM_RUE_TRN_ABO: tag('NO_RUE') || '',
-      NUM_TRC_RUE_TRN_ABO: parseInt(tag('NUM_RUE')) || 0,
-      NO_RUE_LIV_ABO: parseInt(tag('NO_RUE')) || 0,
-      NO_ETG_LIV_ABO: parseInt(tag('NO_ETG')) || 0,
-      NUM_SEC_RGR_ABO: tag('NumeroPhysiqueRegroupant') || '',
-      NOM_RUE_LIV_ABO: tag('LIB_RUE') || tag('NOM_RUE') || '',
-      NUM_CTA_ABO: tag('NUM_CTA') || '',
-      RAI_SOC_CLI_ABO: tag('NOM_CON') || tag('NOM_FAC') || '',
-      NUM_PHY_APT_ABO: tag('NUM_APT') || tag('NO_APT') || '',
-      VAL_IDX_CSO_ANC_ABO: parseInt(tag('VAL_IDX')) || 0,
-      VOL_CSO_MAX_ABO: parseInt(tag('VAL_IDX_CSO_MAX')) || undefined,
-      VOL_CSO_MIN_ABO: parseInt(tag('VAL_IDX_CSO_MIN')) || undefined,
-      DIA_APT_ABO: parseInt(tag('DIA_APT')) || undefined,
-      ANN_FAB_CPR_ABO: parseInt(tag('ANN_FAB')) || undefined,
-      RPG_APT_PNT_DRT_ABO: tag('RPG_APT') || '',
-      IND_ACB_APT_ABO: tag('COD_ACC_APT') || '',
-      NUM_PNT_DRT_ABO: tag('NUM_PNT_DRT') || tag('COD_PRT_1_PNT_DRT') || '',
-      COD_ETA_CTA_ABO: tag('ETA_CTA') || '',
-      NUM_ORD_REL_ABO: parseInt(tag('ORDRE')) || parseInt(tag('NO_RLV')) || 0,
-      ORDRE: parseInt(tag('ORDRE')) || 0,
-      NOM_COM: tag('NomCommune') || tag('BUR_DSB_SEC_GEO') || '',
-      NUM_COM: parseInt(tag('NumeroCommune')) || parseInt(tag('COD_COM')) || undefined,
-      NUM_PHY_APT_RGR: tag('NumeroPhysiqueRegroupant') || '',
-      NUM_APT: tag('NUM_APT') || tag('NO_APT') || '',
-      COD_TYP_RES: tag('COD_TYP_MTR') || '',
-      COD_PAL_PAL_ABO: tag('COD_PAL_SEC_GEO') || '',
+      NUM_TRN_ABO: tag('NUM_TRN_ABO', 'NUM_TRN'),
+      NUM_SEC_LIV_ABO: tag('NUM_SEC_LIV_ABO'),
+      NUM_RUE_TRN_ABO: tag('NUM_RUE_TRN_ABO'),
+      NUM_TRC_RUE_TRN_ABO: num('NUM_TRC_RUE_TRN_ABO') ?? 0,
+      NO_RUE_LIV_ABO: num('NO_RUE_LIV_ABO') ?? 0,
+      NO_ETG_LIV_ABO: num('NO_ETG_LIV_ABO') ?? 0,
+      NUM_SEC_RGR_ABO: tag('NUM_SEC_RGR_ABO'),
+      NOM_RUE_LIV_ABO: tag('NOM_RUE_LIV_ABO'),
+      CPM_NO_RUE_LIV_ABO: tag('CPM_NO_RUE_LIV_ABO') || undefined,
+      COD_TTR_RUE_LIV_ABO: tag('COD_TTR_RUE_LIV_ABO') || undefined,
+      NUM_CTA_ABO: tag('NUM_CTA_ABO'),
+      RAI_SOC_CLI_ABO: tag('RAI_SOC_CLI_ABO'),
+      COD_TTR_CLI_ABO: tag('COD_TTR_CLI_ABO') || undefined,
+      NUM_PHY_APT_ABO: tag('NUM_PHY_APT_ABO'),
+      VAL_IDX_CSO_ANC_ABO: num('VAL_IDX_CSO_RLV', 'VAL_IDX_CSO', 'VAL_IDX_CSO_ANC_ABO') ?? 0,
+      VOL_CSO_MAX_ABO: num('VOL_CSO_MAX_ABO'),
+      VOL_CSO_MIN_ABO: num('VOL_CSO_MIN_ABO'),
+      DIA_APT_ABO: num('DIA_APT_ABO'),
+      ANN_FAB_CPR_ABO: num('ANN_FAB_CPR_ABO'),
+      RPG_APT_PNT_DRT_ABO: tag('RPG_APT_PNT_DRT') || undefined,
+      IND_ACB_APT_ABO: tag('IND_ACB_APT_PNT_DRT', 'IND_ACB_APT_ABO') || undefined,
+      NUM_PNT_DRT_ABO: numPntDrt,
+      COD_ETA_CTA_ABO: tag('COD_ETA_CTA_ABO') || undefined,
+      NUM_ORD_REL_ABO: ordre,
+      ORDRE: num('ORDRE') ?? ordre,
+      NOM_COM: tag('NomCommune') || undefined,
+      NUM_COM: num('NumeroCommune'),
+      NUM_PHY_APT_RGR: tag('NumeroPhysiqueRegroupant') || undefined,
+      NUM_APT: tag('NUM_APT') || undefined,
+      COD_TYP_RES: tag('COD_TYP_RES') || undefined,
+      ID_ED: num('ID_ED'),
     });
+
+    pointsDroit.push({
+      NUM_PNT_DRT: numPntDrt,
+      COD_PRT_1_PNT_DRT: tag('COD_PRT_1_PNT_DRT') || undefined,
+      ANC_NUM_ORD_REL_PNT_DRT: tag('ANC_NUM_ORD_REL_PNT_DRT') || undefined,
+    });
+
+    const numApt = tag('NUM_APT');
+    if (numApt) {
+      compteurs.push({ NUM_APT: numApt, COD_MDL_APT_APT: tag('COD_MDL_APT_APT') || undefined });
+      const numSerie = tag('NUM_SER_ELT_APT');
+      if (numSerie) {
+        elementsCompteur.push({
+          COD_ELT_APT: tag('COD_ELT_APT'),
+          COD_MDL_ELT_APT: tag('COD_MDL_ELT_APT') || undefined,
+          NUM_APT: numApt,
+          NUM_SER_ELT_APT: numSerie,
+        });
+      }
+    }
+
+    // Historique de consommation (ConsommationReleve + éventuels blocs Consommations)
+    const datRlv = tag('DAT_RLV_CSO_RLV', 'DAT_RLV_ABT_CSO');
+    const valIdx = num('VAL_IDX_CSO_RLV', 'VAL_IDX_CSO');
+    if (datRlv || valIdx !== undefined) {
+      consommations.push({
+        NUM_PNT_DRT_CSO: numPntDrt,
+        ANN_HIS_CSO: tag('ANN_HIS_CSO', 'ANN_HIS_RLV'),
+        PER_HIS_CSO: num('PER_HIS_CSO', 'PER_HIS_RLV') ?? 0,
+        DAT_RLV_ABT_CSO: datRlv,
+        COD_ANN_RLV_CSO: tag('COD_ANN_RLV_CSO', 'COD_ANN_RLV') || undefined,
+        COD_ANO_RLV_CSO: tag('COD_ANO_RLV_CSO', 'COD_ANO_RLV') || undefined,
+        NBJ_DIF_PRE_CSO: num('NBJ_DIF_PRE_CSO'),
+        VAL_IDX_CSO: valIdx,
+        VOL_CSO_EAU_CSO: num('VOL_CSO_EAU_CSO'),
+      });
+    }
   }
 
   // Extract tournee info
-  const tourneeNum = extractTagValue(xml, 'NUM_TRN') || extractTagValue(xml, 'NumeroTournee') || '';
-  const tournees: import('@/types/water').Tournee[] = tourneeNum ? [{ NUM_TRN: tourneeNum }] : [];
+  const tourneeNum =
+    extractTagValue(xml, 'NumeroTournee') || extractTagValue(xml, 'NUM_TRN_ABO') || extractTagValue(xml, 'NUM_TRN') || '';
+  const annee = parseInt(extractTagValue(xml, 'ANN_TRN') || '', 10);
+  const periode = parseInt(extractTagValue(xml, 'PER_TRN') || '', 10);
+  const tournees: import('@/types/water').Tournee[] = tourneeNum
+    ? [{
+        NUM_TRN: tourneeNum,
+        ANN_TRN: Number.isFinite(annee) ? annee : undefined,
+        PER_TRN: Number.isFinite(periode) ? periode : undefined,
+      }]
+    : [];
 
   return {
     abonnes,
     tournees,
-    compteurs: [],
+    compteurs,
     anomalies: [],
     annulations: [],
     accessibilites: [],
     modeles: [],
     portes: [],
-    consommations: [],
+    consommations,
     parametres: [],
-    elementsCompteur: [],
-    pointsDroit: [],
+    elementsCompteur,
+    pointsDroit,
   };
 }
+
+function decodeXml(s: string): string {
+  return s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
 
 // ─── WSParametragePda ───────────────────────────────────────────
 
