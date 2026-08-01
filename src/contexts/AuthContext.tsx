@@ -15,7 +15,11 @@ interface AuthContextType {
   setMode: (mode: 'mock' | 'api' | 'soap') => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Singleton stable même après un rechargement à chaud (HMR) : sans cela, le module
+// peut être ré-évalué et créer un nouveau contexte que les consommateurs déjà montés
+// ne voient pas → "useAuth must be used within AuthProvider".
+const g = globalThis as unknown as { __authContext?: React.Context<AuthContextType | undefined> };
+const AuthContext = g.__authContext ?? (g.__authContext = createContext<AuthContextType | undefined>(undefined));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

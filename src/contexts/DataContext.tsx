@@ -30,7 +30,9 @@ interface DataContextType {
   lastUnloadDate: string | null;
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
+// Singleton stable même après un rechargement à chaud (HMR).
+const gd = globalThis as unknown as { __dataContext?: React.Context<DataContextType | undefined> };
+const DataContext = gd.__dataContext ?? (gd.__dataContext = createContext<DataContextType | undefined>(undefined));
 
 // Debounce helper
 function useDebouncedEffect(fn: () => void, deps: unknown[], delay: number) {
