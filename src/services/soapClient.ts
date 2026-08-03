@@ -235,7 +235,8 @@ async function sendSoap(
   soapAction: string,
   body: string,
   version: 11 | 12,
-  signal: AbortSignal
+  signal: AbortSignal,
+  endpoint = ''
 ): Promise<{ status: number; xml: string }> {
   const envelope = buildSoapEnvelope(body, version);
   // SOAP 1.1 → text/xml + en-tête SOAPAction ; SOAP 1.2 → application/soap+xml (action dans le Content-Type)
@@ -244,25 +245,53 @@ async function sendSoap(
       ? { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: `"${soapAction}"` }
       : { 'Content-Type': `application/soap+xml; charset=utf-8; action="${soapAction}"` };
 
-  if (Capacitor.isNativePlatform()) {
-    const response = await CapacitorHttp.request({
-      url,
-      method: 'POST',
-      headers,
-      data: envelope,
-      responseType: 'text',
-      connectTimeout: 30000,
-      readTimeout: 30000,
-    });
-    return {
-      status: response.status,
-      xml: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
-    };
-  }
+  const started = Date.now();
+  const base = {
+    timestamp: new Date().toISOString(),
+    endpoint,
+    soapAction,
+    version,
+    url,
+    requestHeaders: headers,
+    requestBody: envelope,
+  };
 
-  const response = await fetch(url, { method: 'POST', headers, body: envelope, signal });
-  return { status: response.status, xml: await response.text() };
+  try {
+    let result: { status: number; xml: string };
+    if (Capacitor.isNativePlatform()) {
+      const response = await CapacitorHttp.request({
+        url,
+        method: 'POST',
+        headers,
+        data: envelope,
+        responseType: 'text',
+        connectTimeout: 30000,
+        readTimeout: 30000,
+      });
+      result = {
+        status: response.status,
+        xml: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
+      };
+    } else {
+      const response = await fetch(url, { method: 'POST', headers, body: envelope, signal });
+      result = { status: response.status, xml: await response.text() };
+    }
+
+    const failed = result.status < 200 || result.status >= 300;
+    pushDebug(
+      { ...base, status: result.status, responseBody: result.xml, durationMs: Date.now() - started },
+      failed
+    );
+    return result;
+  } catch (error) {
+    pushDebug(
+      { ...base, error: error instanceof Error ? error.message : String(error), durationMs: Date.now() - started },
+      true
+    );
+    throw error;
+  }
 }
+
 
 async function soapRequest(
   endpoint: string,
