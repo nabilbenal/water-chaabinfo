@@ -153,53 +153,73 @@ function nativeHeader(headers: Record<string, string>, name: string): string | n
   return entry?.[1] ?? null;
 }
 
+async function sendSoap(
+  url: string,
+  soapAction: string,
+  body: string,
+  version: 11 | 12,
+  signal: AbortSignal
+): Promise<{ status: number; xml: string }> {
+  const envelope = buildSoapEnvelope(body, version);
+  // SOAP 1.1 → text/xml + en-tête SOAPAction ; SOAP 1.2 → application/soap+xml (action dans le Content-Type)
+  const headers: Record<string, string> =
+    version === 11
+      ? { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: `"${soapAction}"` }
+      : { 'Content-Type': `application/soap+xml; charset=utf-8; action="${soapAction}"` };
+
+  if (Capacitor.isNativePlatform()) {
+    const response = await CapacitorHttp.request({
+      url,
+      method: 'POST',
+      headers,
+      data: envelope,
+      responseType: 'text',
+      connectTimeout: 30000,
+      readTimeout: 30000,
+    });
+    return {
+      status: response.status,
+      xml: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
+    };
+  }
+
+  const response = await fetch(url, { method: 'POST', headers, body: envelope, signal });
+  return { status: response.status, xml: await response.text() };
+}
+
 async function soapRequest(
   endpoint: string,
   soapAction: string,
   body: string,
   config: SoapConfig
 ): Promise<SoapResponse> {
-  const envelope = buildSoapEnvelope(body);
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
     const url = buildEndpointUrl(config.serverUrl, endpoint);
-    let status: number;
-    let xml: string;
 
-    if (Capacitor.isNativePlatform()) {
-      const response = await CapacitorHttp.request({
-        url,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/soap+xml; charset=utf-8',
-          SOAPAction: soapAction,
-        },
-        data: envelope,
-        responseType: 'text',
-        connectTimeout: 30000,
-        readTimeout: 30000,
-      });
-      status = response.status;
-      xml = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-    } else {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/soap+xml; charset=utf-8',
-          SOAPAction: soapAction,
-        },
-        body: envelope,
-        signal: controller.signal,
-      });
-      status = response.status;
-      xml = await response.text();
+    // Tentative SOAP 1.1 (format natif des services ASMX SOMEI), repli en 1.2
+    let { status, xml } = await sendSoap(url, soapAction, body, 11, controller.signal);
+    if (status === 415 || status === 500) {
+      try {
+        const retry = await sendSoap(url, soapAction, body, 12, controller.signal);
+        if (retry.status >= 200 && retry.status < 300) {
+          status = retry.status;
+          xml = retry.xml;
+        }
+      } catch {
+        /* on conserve l'erreur SOAP 1.1 */
+      }
     }
 
     if (status < 200 || status >= 300) {
-      throw new Error(`Erreur serveur SOAP: ${status} — ${xml.substring(0, 200)}`);
+      const fault = extractSoapFault(xml);
+      throw new Error(
+        fault
+          ? `Erreur SOAP ${status} : ${fault}`
+          : `Erreur serveur SOAP: ${status} — ${xml.substring(0, 300)}`
+      );
     }
 
     const wsStatus = extractTagValue(xml, 'WSStatus') || 'ERROR';
@@ -221,6 +241,7 @@ async function soapRequest(
     clearTimeout(timeoutId);
   }
 }
+
 
 // ─── GenerateToken ──────────────────────────────────────────────
 export async function generateToken(config?: SoapConfig): Promise<string> {
