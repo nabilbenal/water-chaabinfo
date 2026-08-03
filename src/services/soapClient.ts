@@ -121,13 +121,16 @@ function extractSoapFault(xml: string): string | null {
 
 
 function extractTagValue(xml: string, tag: string): string | null {
-  const regex = new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i');
+  // Tolère un préfixe de namespace quelconque (<a:Token>, <ns2:Token>, …)
+  const bare = tag.includes(':') ? tag.split(':').pop()! : tag;
+  const regex = new RegExp(`<(?:[A-Za-z0-9_.-]+:)?${bare}[^>]*>([^<]*)</(?:[A-Za-z0-9_.-]+:)?${bare}>`, 'i');
   const match = xml.match(regex);
   return match ? match[1].trim() : null;
 }
 
 function extractAllTags(xml: string, tag: string): string[] {
-  const regex = new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'gi');
+  const bare = tag.includes(':') ? tag.split(':').pop()! : tag;
+  const regex = new RegExp(`<(?:[A-Za-z0-9_.-]+:)?${bare}[^>]*>([^<]*)</(?:[A-Za-z0-9_.-]+:)?${bare}>`, 'gi');
   const results: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = regex.exec(xml)) !== null) {
@@ -135,6 +138,7 @@ function extractAllTags(xml: string, tag: string): string[] {
   }
   return results;
 }
+
 
 // ─── SOAP Request ───────────────────────────────────────────────
 interface SoapResponse {
