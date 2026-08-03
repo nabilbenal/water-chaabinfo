@@ -306,10 +306,11 @@ async function soapRequest(
     const url = buildEndpointUrl(config.serverUrl, endpoint);
 
     // Tentative SOAP 1.1 (format natif des services ASMX SOMEI), repli en 1.2
-    let { status, xml } = await sendSoap(url, soapAction, body, 11, controller.signal);
+    let { status, xml } = await sendSoap(url, soapAction, body, 11, controller.signal, endpoint);
     if (status === 415 || status === 500) {
       try {
-        const retry = await sendSoap(url, soapAction, body, 12, controller.signal);
+        const retry = await sendSoap(url, soapAction, body, 12, controller.signal, endpoint);
+
         if (retry.status >= 200 && retry.status < 300) {
           status = retry.status;
           xml = retry.xml;
