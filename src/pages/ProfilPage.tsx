@@ -433,6 +433,9 @@ function SoapConfigPanel() {
           </p>
         </div>
       )}
+
+      <SoapDebugPanel />
+
     </motion.div>
   );
 }
