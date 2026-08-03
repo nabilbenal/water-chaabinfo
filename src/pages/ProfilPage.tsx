@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, LogOut, Droplets, Smartphone, Shield, FileUp, FileDown, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSoapConfig, saveSoapConfig, testSoapConnection, testWsdlAvailability, SOAP_ENV_DEFAULTS, getWsdlUrl, type SoapConfig, type WsdlTestResult } from '@/services/soapClient';
+import SoapDebugPanel from '@/components/SoapDebugPanel';
+
 
 export default function ProfilPage() {
   const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, importFile, exportSDF, loadedData } = useApp();
