@@ -140,6 +140,78 @@ function extractAllTags(xml: string, tag: string): string[] {
 }
 
 
+// ─── Debug SOAP ─────────────────────────────────────────────────
+const DEBUG_KEY = 'soap-debug';
+const MAX_DEBUG_ENTRIES = 20;
+
+export interface SoapDebugEntry {
+  timestamp: string;
+  endpoint: string;
+  soapAction: string;
+  version: 11 | 12;
+  url: string;
+  requestHeaders: Record<string, string>;
+  requestBody: string;
+  status?: number;
+  responseBody?: string;
+  error?: string;
+  durationMs: number;
+}
+
+let debugLog: SoapDebugEntry[] = [];
+const debugListeners = new Set<(log: SoapDebugEntry[]) => void>();
+
+export function isSoapDebugEnabled(): boolean {
+  return localStorage.getItem(DEBUG_KEY) === '1';
+}
+
+export function setSoapDebugEnabled(enabled: boolean): void {
+  localStorage.setItem(DEBUG_KEY, enabled ? '1' : '0');
+}
+
+export function getSoapDebugLog(): SoapDebugEntry[] {
+  return debugLog;
+}
+
+export function clearSoapDebugLog(): void {
+  debugLog = [];
+  debugListeners.forEach((l) => l(debugLog));
+}
+
+export function subscribeSoapDebug(listener: (log: SoapDebugEntry[]) => void): () => void {
+  debugListeners.add(listener);
+  return () => debugListeners.delete(listener);
+}
+
+/** Masque les secrets (AccessKey, Token) avant journalisation */
+function redact(xml: string): string {
+  return xml
+    .replace(/(<(?:[\w.-]+:)?AccessKey[^>]*>)([^<]*)(<)/gi, '$1***$3')
+    .replace(/(<(?:[\w.-]+:)?Token[^>]*>)([^<]{6})[^<]*(<)/gi, '$1$2…***$3');
+}
+
+function pushDebug(entry: SoapDebugEntry, failed: boolean): void {
+  if (!isSoapDebugEnabled() && !failed) return;
+  const safe: SoapDebugEntry = {
+    ...entry,
+    requestBody: redact(entry.requestBody),
+    responseBody: entry.responseBody ? redact(entry.responseBody) : undefined,
+  };
+  debugLog = [safe, ...debugLog].slice(0, MAX_DEBUG_ENTRIES);
+  debugListeners.forEach((l) => l(debugLog));
+  if (isSoapDebugEnabled() || failed) {
+    console.groupCollapsed(
+      `[SOAP ${failed ? 'ÉCHEC' : 'OK'}] ${safe.soapAction} → ${safe.status ?? safe.error ?? '?'} (${safe.durationMs} ms)`
+    );
+    console.log('URL:', safe.url, '| SOAP', safe.version === 11 ? '1.1' : '1.2');
+    console.log('Request headers:', safe.requestHeaders);
+    console.log('Request body:\n' + safe.requestBody);
+    if (safe.responseBody !== undefined) console.log('Response body:\n' + safe.responseBody);
+    if (safe.error) console.log('Erreur:', safe.error);
+    console.groupEnd();
+  }
+}
+
 // ─── SOAP Request ───────────────────────────────────────────────
 interface SoapResponse {
   status: 'OK' | 'WARNING' | 'ERROR';
@@ -147,6 +219,7 @@ interface SoapResponse {
   message: string;
   raw: string;
 }
+
 
 function buildEndpointUrl(baseUrl: string, endpoint: string): string {
   return `${baseUrl.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
@@ -162,7 +235,8 @@ async function sendSoap(
   soapAction: string,
   body: string,
   version: 11 | 12,
-  signal: AbortSignal
+  signal: AbortSignal,
+  endpoint = ''
 ): Promise<{ status: number; xml: string }> {
   const envelope = buildSoapEnvelope(body, version);
   // SOAP 1.1 → text/xml + en-tête SOAPAction ; SOAP 1.2 → application/soap+xml (action dans le Content-Type)
@@ -171,25 +245,53 @@ async function sendSoap(
       ? { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: `"${soapAction}"` }
       : { 'Content-Type': `application/soap+xml; charset=utf-8; action="${soapAction}"` };
 
-  if (Capacitor.isNativePlatform()) {
-    const response = await CapacitorHttp.request({
-      url,
-      method: 'POST',
-      headers,
-      data: envelope,
-      responseType: 'text',
-      connectTimeout: 30000,
-      readTimeout: 30000,
-    });
-    return {
-      status: response.status,
-      xml: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
-    };
-  }
+  const started = Date.now();
+  const base = {
+    timestamp: new Date().toISOString(),
+    endpoint,
+    soapAction,
+    version,
+    url,
+    requestHeaders: headers,
+    requestBody: envelope,
+  };
 
-  const response = await fetch(url, { method: 'POST', headers, body: envelope, signal });
-  return { status: response.status, xml: await response.text() };
+  try {
+    let result: { status: number; xml: string };
+    if (Capacitor.isNativePlatform()) {
+      const response = await CapacitorHttp.request({
+        url,
+        method: 'POST',
+        headers,
+        data: envelope,
+        responseType: 'text',
+        connectTimeout: 30000,
+        readTimeout: 30000,
+      });
+      result = {
+        status: response.status,
+        xml: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
+      };
+    } else {
+      const response = await fetch(url, { method: 'POST', headers, body: envelope, signal });
+      result = { status: response.status, xml: await response.text() };
+    }
+
+    const failed = result.status < 200 || result.status >= 300;
+    pushDebug(
+      { ...base, status: result.status, responseBody: result.xml, durationMs: Date.now() - started },
+      failed
+    );
+    return result;
+  } catch (error) {
+    pushDebug(
+      { ...base, error: error instanceof Error ? error.message : String(error), durationMs: Date.now() - started },
+      true
+    );
+    throw error;
+  }
 }
+
 
 async function soapRequest(
   endpoint: string,
@@ -204,10 +306,11 @@ async function soapRequest(
     const url = buildEndpointUrl(config.serverUrl, endpoint);
 
     // Tentative SOAP 1.1 (format natif des services ASMX SOMEI), repli en 1.2
-    let { status, xml } = await sendSoap(url, soapAction, body, 11, controller.signal);
+    let { status, xml } = await sendSoap(url, soapAction, body, 11, controller.signal, endpoint);
     if (status === 415 || status === 500) {
       try {
-        const retry = await sendSoap(url, soapAction, body, 12, controller.signal);
+        const retry = await sendSoap(url, soapAction, body, 12, controller.signal, endpoint);
+
         if (retry.status >= 200 && retry.status < 300) {
           status = retry.status;
           xml = retry.xml;
