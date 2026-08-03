@@ -140,6 +140,78 @@ function extractAllTags(xml: string, tag: string): string[] {
 }
 
 
+// ─── Debug SOAP ─────────────────────────────────────────────────
+const DEBUG_KEY = 'soap-debug';
+const MAX_DEBUG_ENTRIES = 20;
+
+export interface SoapDebugEntry {
+  timestamp: string;
+  endpoint: string;
+  soapAction: string;
+  version: 11 | 12;
+  url: string;
+  requestHeaders: Record<string, string>;
+  requestBody: string;
+  status?: number;
+  responseBody?: string;
+  error?: string;
+  durationMs: number;
+}
+
+let debugLog: SoapDebugEntry[] = [];
+const debugListeners = new Set<(log: SoapDebugEntry[]) => void>();
+
+export function isSoapDebugEnabled(): boolean {
+  return localStorage.getItem(DEBUG_KEY) === '1';
+}
+
+export function setSoapDebugEnabled(enabled: boolean): void {
+  localStorage.setItem(DEBUG_KEY, enabled ? '1' : '0');
+}
+
+export function getSoapDebugLog(): SoapDebugEntry[] {
+  return debugLog;
+}
+
+export function clearSoapDebugLog(): void {
+  debugLog = [];
+  debugListeners.forEach((l) => l(debugLog));
+}
+
+export function subscribeSoapDebug(listener: (log: SoapDebugEntry[]) => void): () => void {
+  debugListeners.add(listener);
+  return () => debugListeners.delete(listener);
+}
+
+/** Masque les secrets (AccessKey, Token) avant journalisation */
+function redact(xml: string): string {
+  return xml
+    .replace(/(<(?:[\w.-]+:)?AccessKey[^>]*>)([^<]*)(<)/gi, '$1***$3')
+    .replace(/(<(?:[\w.-]+:)?Token[^>]*>)([^<]{6})[^<]*(<)/gi, '$1$2…***$3');
+}
+
+function pushDebug(entry: SoapDebugEntry, failed: boolean): void {
+  if (!isSoapDebugEnabled() && !failed) return;
+  const safe: SoapDebugEntry = {
+    ...entry,
+    requestBody: redact(entry.requestBody),
+    responseBody: entry.responseBody ? redact(entry.responseBody) : undefined,
+  };
+  debugLog = [safe, ...debugLog].slice(0, MAX_DEBUG_ENTRIES);
+  debugListeners.forEach((l) => l(debugLog));
+  if (isSoapDebugEnabled() || failed) {
+    console.groupCollapsed(
+      `[SOAP ${failed ? 'ÉCHEC' : 'OK'}] ${safe.soapAction} → ${safe.status ?? safe.error ?? '?'} (${safe.durationMs} ms)`
+    );
+    console.log('URL:', safe.url, '| SOAP', safe.version === 11 ? '1.1' : '1.2');
+    console.log('Request headers:', safe.requestHeaders);
+    console.log('Request body:\n' + safe.requestBody);
+    if (safe.responseBody !== undefined) console.log('Response body:\n' + safe.responseBody);
+    if (safe.error) console.log('Erreur:', safe.error);
+    console.groupEnd();
+  }
+}
+
 // ─── SOAP Request ───────────────────────────────────────────────
 interface SoapResponse {
   status: 'OK' | 'WARNING' | 'ERROR';
@@ -147,6 +219,7 @@ interface SoapResponse {
   message: string;
   raw: string;
 }
+
 
 function buildEndpointUrl(baseUrl: string, endpoint: string): string {
   return `${baseUrl.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
