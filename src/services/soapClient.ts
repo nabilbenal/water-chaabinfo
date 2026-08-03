@@ -90,9 +90,17 @@ function escapeXml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function buildSoapEnvelope(body: string): string {
+/**
+ * Enveloppe SOAP. Les services SOMEI (ASMX) répondent en SOAP 1.1 :
+ * namespace http://schemas.xmlsoap.org/soap/envelope/ + Content-Type text/xml + SOAPAction.
+ * Le mode 1.2 reste disponible en repli.
+ */
+function buildSoapEnvelope(body: string, version: 11 | 12 = 11): string {
+  const ns = version === 11
+    ? 'http://schemas.xmlsoap.org/soap/envelope/'
+    : 'http://www.w3.org/2003/05/soap-envelope';
   return `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/2003/05/soap-envelope"
+<soap:Envelope xmlns:soap="${ns}"
                xmlns:web="${NAMESPACE}">
   <soap:Header/>
   <soap:Body>
@@ -100,6 +108,17 @@ function buildSoapEnvelope(body: string): string {
   </soap:Body>
 </soap:Envelope>`;
 }
+
+/** Extrait le message d'une SOAP Fault (1.1 faultstring / 1.2 Reason>Text) */
+function extractSoapFault(xml: string): string | null {
+  return (
+    extractTagValue(xml, 'faultstring') ||
+    extractTagValue(xml, 'soap:Text') ||
+    extractTagValue(xml, 'Text') ||
+    null
+  );
+}
+
 
 function extractTagValue(xml: string, tag: string): string | null {
   const regex = new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i');
