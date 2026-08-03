@@ -276,14 +276,31 @@ export async function generateToken(config?: SoapConfig): Promise<string> {
     throw new Error(`Authentification SOMEI échouée: [${result.code}] ${result.message}`);
   }
 
-  const token = extractTagValue(result.raw, 'Token');
+  // Le nom du champ varie selon les versions SOMEI (Token, Jeton, TokenId,
+  // GenerateTokenResult…). On teste les variantes puis un repli générique.
+  let token =
+    extractTagValue(result.raw, 'Token') ||
+    extractTagValue(result.raw, 'TokenId') ||
+    extractTagValue(result.raw, 'TokenValue') ||
+    extractTagValue(result.raw, 'Jeton') ||
+    extractTagValue(result.raw, 'ConversationId') ||
+    extractTagValue(result.raw, 'GenerateTokenResult');
+
   if (!token) {
-    throw new Error('Aucun token reçu du serveur SOMEI.');
+    // Repli : dernier élément feuille non vide qui ressemble à un identifiant
+    const leaves = [...result.raw.matchAll(/<(?:[A-Za-z0-9_.-]+:)?([A-Za-z0-9_]*[Tt]oken[A-Za-z0-9_]*)[^>]*>([^<]+)</g)];
+    token = leaves.length ? leaves[leaves.length - 1][2].trim() : null;
   }
 
-  // Cache token for 55 minutes (typical SOMEI token lifetime ~1h)
+  if (!token) {
+    throw new Error(
+      `Aucun token reçu du serveur SOMEI. Réponse [${result.code}] ${result.message} — ${result.raw.substring(0, 400)}`
+    );
+  }
+
   cachedToken = { value: token, expiresAt: Date.now() + 55 * 60 * 1000 };
   localStorage.setItem(TOKEN_KEY, JSON.stringify(cachedToken));
+
 
   return token;
 }
