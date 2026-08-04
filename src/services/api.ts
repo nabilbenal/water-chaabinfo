@@ -5,6 +5,23 @@
 
 import type { LoadedData, ReleveConsommation, PhotoReleve } from '@/types/water';
 import { mockLoadedData } from '@/data/mockData';
+import {
+  SDF_TABLES,
+  normalizeAbonne,
+  normalizeAccessibilite,
+  normalizeAll,
+  normalizeAnnulation,
+  normalizeAnomalie,
+  normalizeCompteur,
+  normalizeConsommation,
+  normalizeElementCompteur,
+  normalizeModele,
+  normalizeParametre,
+  normalizePointDroit,
+  normalizePorte,
+  normalizeReleveConsommation,
+  normalizeTournee,
+} from './sdfSchema';
 
 // Configuration du serveur - à adapter selon votre environnement
 const API_CONFIG = {
