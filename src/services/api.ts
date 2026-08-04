@@ -261,59 +261,88 @@ export async function apiUnloadData(
 }
 
 /**
- * Cherche une valeur dans l'objet JSON en testant plusieurs noms de clé possibles
+ * Cherche une table dans l'objet importé en testant les noms de table SDF
+ * (ABO, TRN, APT, CSO_RLV, …) ainsi que quelques alias, sans distinction de casse.
  */
-function findKey(obj: Record<string, unknown>, ...keys: string[]): unknown[] {
+function findTable(raw: Record<string, unknown>, ...keys: string[]): unknown[] {
   for (const key of keys) {
-    if (obj[key] !== undefined) return Array.isArray(obj[key]) ? obj[key] as unknown[] : [];
-    const found = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
-    if (found && obj[found] !== undefined) return Array.isArray(obj[found]) ? obj[found] as unknown[] : [];
+    const direct = raw[key];
+    if (Array.isArray(direct)) return direct;
+    const found = Object.keys(raw).find((k) => k.toLowerCase() === key.toLowerCase());
+    if (found && Array.isArray(raw[found])) return raw[found] as unknown[];
   }
   return [];
 }
 
+/**
+ * Convertit un export SDF/JSON en LoadedData.
+ *
+ * Le mapping suit STRICTEMENT les noms de tables et de colonnes PocketRelevé
+ * (cf. SoapClient.kt / pocketRLV.sdf) : ABO, TRN, APT, ELT_APT, PNT_DRT,
+ * ANO_RLV, ANN_RLV, ACB_APT, MDL_APT, PRT_PNT_DRT, CSO, CSO_RLV, PAR.
+ */
 export function parseLoadedDataFromJSON(jsonString: string): LoadedData {
   const cleanString = jsonString.replace(/^\uFEFF/, '');
-  const raw = JSON.parse(cleanString);
+  const parsed = JSON.parse(cleanString);
 
-  if (Array.isArray(raw)) {
+  if (Array.isArray(parsed)) {
     return {
-      abonnes: raw,
+      abonnes: normalizeAll(parsed, normalizeAbonne),
       tournees: [], compteurs: [], anomalies: [], annulations: [],
       accessibilites: [], modeles: [], portes: [], consommations: [],
-      parametres: [], elementsCompteur: [], pointsDroit: [],
+      parametres: [], elementsCompteur: [], pointsDroit: [], relevesExistants: [],
     };
   }
 
+  // Un export .sdf généré par l'app encapsule les tables dans `tables`
+  const raw: Record<string, unknown> =
+    parsed && typeof parsed === 'object' && parsed.tables && typeof parsed.tables === 'object'
+      ? (parsed.tables as Record<string, unknown>)
+      : (parsed as Record<string, unknown>);
+
+  const abonnes = normalizeAll(
+    findTable(raw, SDF_TABLES.ABO, 'abonnes', 'Abonnes', 'subscribers'),
+    normalizeAbonne
+  );
+
+  const pointsDroit = normalizeAll(findTable(raw, SDF_TABLES.PNT_DRT, 'pointsDroit', 'points'), normalizePointDroit);
+  const compteurs = normalizeAll(findTable(raw, SDF_TABLES.APT, 'compteurs', 'meters'), normalizeCompteur);
+
   const data: LoadedData = {
-    abonnes: findKey(raw, 'abo', 'ABO', 'abonnes', 'Abonnes', 'subscribers') as LoadedData['abonnes'],
-    tournees: findKey(raw, 'trn', 'TRN', 'tournees', 'Tournees', 'tours') as LoadedData['tournees'],
-    compteurs: findKey(raw, 'apt', 'APT', 'compteurs', 'Compteurs', 'meters') as LoadedData['compteurs'],
-    anomalies: findKey(raw, 'ano_rlv', 'ANO_RLV', 'anomalies', 'Anomalies') as LoadedData['anomalies'],
-    annulations: findKey(raw, 'ann_rlv', 'ANN_RLV', 'annulations', 'Annulations') as LoadedData['annulations'],
-    accessibilites: findKey(raw, 'acb_apt', 'ACB_APT', 'accessibilites') as LoadedData['accessibilites'],
-    modeles: findKey(raw, 'mdl_apt', 'MDL_APT', 'modeles') as LoadedData['modeles'],
-    portes: findKey(raw, 'prt_pnt_drt', 'PRT_PNT_DRT', 'portes') as LoadedData['portes'],
-    consommations: findKey(raw, 'cso', 'CSO', 'CSO_RLV', 'cso_rlv', 'consommations', 'Consommations') as LoadedData['consommations'],
-    parametres: findKey(raw, 'par', 'PAR', 'parametres') as LoadedData['parametres'],
-    elementsCompteur: findKey(raw, 'elt_apt', 'ELT_APT', 'elements') as LoadedData['elementsCompteur'],
-    pointsDroit: findKey(raw, 'pnt_drt', 'PNT_DRT', 'points') as LoadedData['pointsDroit'],
+    abonnes,
+    tournees: normalizeAll(findTable(raw, SDF_TABLES.TRN, 'tournees', 'tours'), normalizeTournee),
+    compteurs,
+    anomalies: normalizeAll(findTable(raw, SDF_TABLES.ANO_RLV, 'anomalies'), normalizeAnomalie),
+    annulations: normalizeAll(findTable(raw, SDF_TABLES.ANN_RLV, 'annulations'), normalizeAnnulation),
+    accessibilites: normalizeAll(findTable(raw, SDF_TABLES.ACB_APT, 'accessibilites'), normalizeAccessibilite),
+    modeles: normalizeAll(findTable(raw, SDF_TABLES.MDL_APT, 'modeles'), normalizeModele),
+    portes: normalizeAll(findTable(raw, SDF_TABLES.PRT_PNT_DRT, 'portes'), normalizePorte),
+    consommations: normalizeAll(findTable(raw, SDF_TABLES.CSO, 'consommations'), normalizeConsommation),
+    relevesExistants: normalizeAll(findTable(raw, SDF_TABLES.CSO_RLV, 'releves'), normalizeReleveConsommation),
+    parametres: normalizeAll(findTable(raw, SDF_TABLES.PAR, 'parametres'), normalizeParametre),
+    elementsCompteur: normalizeAll(findTable(raw, SDF_TABLES.ELT_APT, 'elements'), normalizeElementCompteur),
+    pointsDroit,
   };
 
-  const totalRecords = Object.values(data).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-
-  if (totalRecords === 0) {
-    const keys = Object.keys(raw);
-    const arrays = keys.filter(k => Array.isArray(raw[k]));
-    if (arrays.length > 0) {
-      const fields: (keyof LoadedData)[] = ['abonnes', 'tournees', 'compteurs', 'anomalies', 'annulations', 'consommations'];
-      arrays.forEach((key, i) => {
-        if (i < fields.length) {
-          (data[fields[i]] as unknown[]) = raw[key];
-        }
-      });
-    }
+  // Tables dérivées de ABO lorsqu'elles sont absentes du fichier importé
+  if (data.pointsDroit.length === 0) {
+    data.pointsDroit = data.abonnes.map((a) => ({
+      NUM_PNT_DRT: a.NUM_PNT_DRT_ABO,
+      COD_PRT_1_PNT_DRT: undefined,
+      ANC_NUM_ORD_REL_PNT_DRT: a.NUM_ORD_REL_ABO !== undefined ? String(a.NUM_ORD_REL_ABO) : undefined,
+    }));
+  }
+  if (data.compteurs.length === 0) {
+    const seen = new Set<string>();
+    data.compteurs = data.abonnes
+      .filter((a) => a.NUM_APT && !seen.has(a.NUM_APT) && seen.add(a.NUM_APT))
+      .map((a) => ({ NUM_APT: a.NUM_APT as string }));
+  }
+  if (data.tournees.length === 0 && data.abonnes.length > 0) {
+    const numTrn = data.abonnes[0].NUM_TRN_ABO;
+    if (numTrn) data.tournees = [{ NUM_TRN: numTrn }];
   }
 
   return data;
 }
+
