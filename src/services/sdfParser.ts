@@ -68,6 +68,28 @@ function decodeAboRow(view: DataView, bytes: Uint8Array, pos: number, blobLen: n
   return row;
 }
 
+/** Contrôle de cohérence : rejette les faux positifs du balayage binaire. */
+function isPlausibleAboRow(row: Row): boolean {
+  const pdr = row.NUM_PNT_DRT_ABO;
+  if (typeof pdr !== 'string' || !/^\d{4,12}$/.test(pdr)) return false;
+  const trn = row.NUM_TRN_ABO;
+  if (typeof trn !== 'string' || !/^\d{1,4}$/.test(trn)) return false;
+
+  const ordre = row.ORDRE as number;
+  if (!Number.isInteger(ordre) || ordre < 0 || ordre > 500000) return false;
+  const ordRel = row.NUM_ORD_REL_ABO as number;
+  if (!Number.isInteger(ordRel) || ordRel < 0 || ordRel > 5000000) return false;
+  const com = row.NUM_COM as number;
+  if (!Number.isInteger(com) || com < 0 || com > 9999) return false;
+  const ann = row.ANN_FAB_CPR_ABO as number;
+  if (!Number.isInteger(ann) || ann < 0 || (ann > 0 && (ann < 1900 || ann > 2100))) return false;
+  const idx = row.VAL_IDX_CSO_ANC_ABO as number;
+  if (!Number.isInteger(idx) || idx < 0 || idx > 100000000) return false;
+  const dia = row.DIA_APT_ABO as number;
+  if (!Number.isInteger(dia) || dia < 0 || dia > 5000) return false;
+  return true;
+}
+
 /** Extrait toutes les lignes ABO d'un .sdf binaire. */
 function extractAboRows(bytes: Uint8Array): Row[] {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -86,9 +108,8 @@ function extractAboRows(bytes: Uint8Array): Row[] {
     // Une ligne ABO complète fait au minimum ~40 caractères imprimables
     if (len >= 40 && len <= 1000) {
       const row = decodeAboRow(view, bytes, i, len);
-      const pdr = row?.NUM_PNT_DRT_ABO;
-      if (row && typeof pdr === 'string' && /^\d{4,12}$/.test(pdr) && !seen.has(pdr)) {
-        seen.add(pdr);
+      if (row && isPlausibleAboRow(row) && !seen.has(row.NUM_PNT_DRT_ABO as string)) {
+        seen.add(row.NUM_PNT_DRT_ABO as string);
         rows.push(row);
       }
     }
