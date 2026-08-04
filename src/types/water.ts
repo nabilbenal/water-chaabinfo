@@ -171,6 +171,8 @@ export interface LoadedData {
   modeles: ModeleCompteur[];
   portes: PortePointDroit[];
   consommations: Consommation[];
+  /** Table CSO_RLV : relevés déjà saisis pour la période en cours */
+  relevesExistants?: ReleveConsommation[];
   parametres: Parametre[];
   elementsCompteur: ElementCompteur[];
   pointsDroit: PointDroit[];

@@ -54,6 +54,7 @@ export function buildSdfPayload(
       periode,
       annee,
     },
+    // Noms de tables et de colonnes strictement conformes au schéma PocketRelevé
     tables: {
       TRN: loadedData?.tournees ?? [],
       ABO: loadedData?.abonnes ?? [],
@@ -62,6 +63,11 @@ export function buildSdfPayload(
       PNT_DRT: loadedData?.pointsDroit ?? [],
       ANO_RLV: loadedData?.anomalies ?? [],
       ANN_RLV: loadedData?.annulations ?? [],
+      ACB_APT: loadedData?.accessibilites ?? [],
+      MDL_APT: loadedData?.modeles ?? [],
+      PRT_PNT_DRT: loadedData?.portes ?? [],
+      PAR: loadedData?.parametres ?? [],
+      CSO: loadedData?.consommations ?? [],
       CSO_RLV: csoRlv,
       PHOTO_RLV: releves
         .filter((r) => r.photoUri)
