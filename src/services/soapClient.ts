@@ -350,6 +350,28 @@ async function soapRequest(
 }
 
 
+// ─── ConversationId ─────────────────────────────────────────────
+const CONVERSATION_KEY = 'soap-conversation-id';
+
+/**
+ * SOMEI exige un ConversationId (identifiant de suivi de conversation).
+ * Sans lui, le serveur renvoie l'avertissement W0002 et aucun token.
+ * On génère un GUID stable, persisté localement.
+ */
+export function getConversationId(): string {
+  let id = localStorage.getItem(CONVERSATION_KEY);
+  if (!id) {
+    id = (globalThis.crypto?.randomUUID?.() ??
+      `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`);
+    localStorage.setItem(CONVERSATION_KEY, id);
+  }
+  return id;
+}
+
+export function setConversationId(id: string): void {
+  localStorage.setItem(CONVERSATION_KEY, id);
+}
+
 // ─── GenerateToken ──────────────────────────────────────────────
 export async function generateToken(config?: SoapConfig): Promise<string> {
   const cfg = config || getSoapConfig();
@@ -360,9 +382,11 @@ export async function generateToken(config?: SoapConfig): Promise<string> {
     return cachedToken.value;
   }
 
+  const conversationId = getConversationId();
+
   const body = `<web:GenerateToken>
       <web:accesBean>
-        <web:ConversationId/>
+        <web:ConversationId>${escapeXml(conversationId)}</web:ConversationId>
         <web:ClientId>${escapeXml(cfg.clientId)}</web:ClientId>
         <web:AccessKey>${escapeXml(cfg.accessKey)}</web:AccessKey>
       </web:accesBean>
@@ -394,6 +418,7 @@ export async function generateToken(config?: SoapConfig): Promise<string> {
     const leaves = [...result.raw.matchAll(/<(?:[A-Za-z0-9_.-]+:)?([A-Za-z0-9_]*[Tt]oken[A-Za-z0-9_]*)[^>]*>([^<]+)</g)];
     token = leaves.length ? leaves[leaves.length - 1][2].trim() : null;
   }
+
 
   if (!token) {
     throw new Error(
