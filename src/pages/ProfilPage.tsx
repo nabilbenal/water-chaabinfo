@@ -214,7 +214,68 @@ export default function ProfilPage() {
               <span className="text-[10px] text-muted-foreground">Déchargement JSON → SDF</span>
             </button>
           </div>
+
+          {/* Validation schéma Kotlin */}
+          <input ref={validateInputRef} type="file" accept=".json,.sdf" onChange={handleValidateSDF} className="hidden" />
+          <button
+            onClick={() => validateInputRef.current?.click()}
+            disabled={validating}
+            className="w-full mt-2 bg-card rounded-xl shadow-card p-4 border border-info/30 flex items-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-60"
+          >
+            {validating
+              ? <Loader2 className="w-5 h-5 text-info animate-spin" />
+              : <ShieldCheck className="w-5 h-5 text-info" />}
+            <div className="text-left">
+              <span className="text-sm font-medium text-foreground block">Valider SDF</span>
+              <span className="text-[10px] text-muted-foreground">Contrôle du schéma Kotlin avant import</span>
+            </div>
+          </button>
+
+          {validation && (
+            <div className={`mt-2 bg-card rounded-xl shadow-card p-4 border ${validation.valid ? 'border-success/40' : 'border-destructive/40'} space-y-2`}>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                  {validation.valid
+                    ? <CheckCircle className="w-4 h-4 text-success" />
+                    : <AlertTriangle className="w-4 h-4 text-destructive" />}
+                  {validation.valid ? 'Schéma conforme' : 'Schéma non conforme'}
+                </p>
+                <button onClick={() => setValidation(null)} aria-label="Fermer le rapport">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground break-all">
+                {validation.fileName} — {validation.rowCount} lignes ABO ·{' '}
+                {validation.summary.errors ?? 0} erreur(s) · {validation.summary.warnings ?? 0} avertissement(s)
+              </p>
+              {validation.issues.length > 0 && (
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {validation.issues.map((issue, i) => (
+                    <div
+                      key={`${issue.field}-${i}`}
+                      className={`text-[11px] rounded-lg px-2 py-1.5 border ${issue.severity === 'error' ? 'border-destructive/30 bg-destructive/5' : 'border-warning/30 bg-warning/5'}`}
+                    >
+                      <span className="font-mono font-medium text-foreground">{issue.table}.{issue.field}</span>
+                      <span className="text-muted-foreground"> — {issue.message}</span>
+                      {issue.count !== undefined && (
+                        <span className="text-muted-foreground"> ({issue.count} ligne{issue.count > 1 ? 's' : ''})</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {validation.valid && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium"
+                >
+                  Procéder à l'import
+                </button>
+              )}
+            </div>
+          )}
         </motion.div>
+
 
 
         {/* Aide & À propos */}
