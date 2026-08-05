@@ -2,9 +2,10 @@ import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, LogOut, Droplets, Smartphone, Shield, FileUp, FileDown, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog } from 'lucide-react';
+import { User, LogOut, Droplets, Smartphone, Shield, FileUp, FileDown, Server, Wifi, CheckCircle, AlertTriangle, HelpCircle, Settings, Loader2, ChevronDown, ChevronUp, Grid3X3, Wrench, MapPin, Cog, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSoapConfig, saveSoapConfig, testSoapConnection, testWsdlAvailability, SOAP_ENV_DEFAULTS, getWsdlUrl, type SoapConfig, type WsdlTestResult } from '@/services/soapClient';
+import { validateSdfFile, type SdfValidationResult } from '@/services/sdfValidator';
 import SoapDebugPanel from '@/components/SoapDebugPanel';
 
 
@@ -12,7 +13,34 @@ export default function ProfilPage() {
   const { agent, logout, releves, lastLoadDate, lastUnloadDate, apiMode, setMode, importJSON, importSDF, importFile, exportSDF, loadedData } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sdfInputRef = useRef<HTMLInputElement>(null);
+  const validateInputRef = useRef<HTMLInputElement>(null);
+  const [validation, setValidation] = useState<SdfValidationResult | null>(null);
+  const [validating, setValidating] = useState(false);
   const navigate = useNavigate();
+
+  const handleValidateSDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setValidating(true);
+    setValidation(null);
+    try {
+      const result = await validateSdfFile(file);
+      setValidation(result);
+      if (result.valid) {
+        toast.success('Schéma conforme', { description: `${result.rowCount} abonnés — aucune erreur bloquante` });
+      } else {
+        toast.error('Schéma non conforme', { description: `${result.summary.errors} erreur(s) détectée(s)` });
+      }
+    } catch (err) {
+      toast.error('Validation impossible', {
+        description: err instanceof Error ? err.message : 'Fichier illisible',
+      });
+    } finally {
+      setValidating(false);
+    }
+  };
+
 
   const handleImportAuto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
