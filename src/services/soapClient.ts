@@ -588,7 +588,7 @@ export async function soapTourneeEnCours(numTerminal: string): Promise<string> {
     `${NAMESPACE}TourneeEnCours`,
     (token) => `<web:TourneeEnCours>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
         <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
       </web:beanIn>
     </web:TourneeEnCours>`
@@ -606,7 +606,7 @@ export async function soapListeReleves(numTerminal: string, numTournee: string):
     `${NAMESPACE}ListeReleves`,
     (token) => `<web:ListeReleves>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
         <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
         <web:NumeroTournee>${escapeXml(numTournee)}</web:NumeroTournee>
       </web:beanIn>
@@ -625,7 +625,7 @@ export async function soapValideChargement(numTerminal: string): Promise<void> {
     `${NAMESPACE}ValideChargement`,
     (token) => `<web:ValideChargement>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
         <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
       </web:beanIn>
     </web:ValideChargement>`
@@ -713,7 +713,7 @@ export async function soapDechargementReleves(
     `${NAMESPACE}DechargementReleves`,
     (token) => `<web:DechargementReleves>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
         <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
         <web:Releves>
           ${relevesXml}
@@ -946,7 +946,7 @@ export async function soapRecupererCellules(): Promise<CelluleParam[]> {
     `${NAMESPACE}RecupererParametrageCellules`,
     (token) => `<web:RecupererParametrageCellules>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
       </web:beanIn>
     </web:RecupererParametrageCellules>`
   );
@@ -963,7 +963,7 @@ export async function soapRecupererFamillesIntervention(): Promise<FamilleInterv
     `${NAMESPACE}RecupererParametrageFamillesIntervention`,
     (token) => `<web:RecupererParametrageFamillesIntervention>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
       </web:beanIn>
     </web:RecupererParametrageFamillesIntervention>`
   );
@@ -980,7 +980,7 @@ export async function soapRecupererOriginesIntervention(): Promise<OrigineInterv
     `${NAMESPACE}RecupererParametrageOriginesIntervention`,
     (token) => `<web:RecupererParametrageOriginesIntervention>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
       </web:beanIn>
     </web:RecupererParametrageOriginesIntervention>`
   );
@@ -997,7 +997,7 @@ export async function soapRecupererTypesMoyen(): Promise<TypeMoyen[]> {
     `${NAMESPACE}RecupererParametrageTypesMoyen`,
     (token) => `<web:RecupererParametrageTypesMoyen>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
       </web:beanIn>
     </web:RecupererParametrageTypesMoyen>`
   );
