@@ -14,6 +14,10 @@ export interface SoapConfig {
   clientId: string;
   /** Clé d'accès (mot de passe) */
   accessKey: string;
+  /** Login applicatif du releveur (AuthentificationBeanIn.NomUtilisateur) */
+  username?: string;
+  /** Mot de passe applicatif du releveur (AuthentificationBeanIn.MotDePasse) */
+  password?: string;
 }
 
 const STORAGE_KEY = 'soap-config';
