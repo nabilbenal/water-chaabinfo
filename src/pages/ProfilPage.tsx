@@ -325,22 +325,24 @@ function SoapConfigPanel() {
   const [serverUrl, setServerUrl] = useState(existing?.serverUrl || SOAP_ENV_DEFAULTS.baseUrl || 'http://10.53.64.61/rec');
   const [clientId, setClientId] = useState(existing?.clientId || SOAP_ENV_DEFAULTS.clientId || '');
   const [accessKey, setAccessKey] = useState(existing?.accessKey || SOAP_ENV_DEFAULTS.accessKey || '');
+  const [username, setUsername] = useState(existing?.username || SOAP_ENV_DEFAULTS.username || '');
+  const [password, setPassword] = useState(existing?.password || SOAP_ENV_DEFAULTS.password || '');
   const [testing, setTesting] = useState(false);
   const wsdlUrl = getWsdlUrl(serverUrl);
   const hasEnvDefaults = Boolean(SOAP_ENV_DEFAULTS.baseUrl);
 
   const handleSave = () => {
-    saveSoapConfig({ serverUrl, clientId, accessKey });
+    saveSoapConfig({ serverUrl, clientId, accessKey, username, password });
     toast.success('Configuration SOAP sauvegardée');
   };
 
   const handleTest = async () => {
     setTesting(true);
     try {
-      const result = await testSoapConnection({ serverUrl, clientId, accessKey });
+      const result = await testSoapConnection({ serverUrl, clientId, accessKey, username, password });
       if (result.success) {
         toast.success('Connexion SOAP réussie', { description: result.message });
-        saveSoapConfig({ serverUrl, clientId, accessKey });
+        saveSoapConfig({ serverUrl, clientId, accessKey, username, password });
       } else {
         toast.error('Échec connexion SOAP', { description: result.message });
       }
@@ -437,6 +439,21 @@ function SoapConfigPanel() {
           <input type="password" value={accessKey} onChange={e => setAccessKey(e.target.value)}
             className="w-full h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/30"
             placeholder="Mot de passe SOMEI" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Login releveur (PDA)</label>
+          <input value={username} onChange={e => setUsername(e.target.value)}
+            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/30"
+            placeholder="NomUtilisateur (sinon = Client ID)" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Mot de passe releveur</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/30"
+            placeholder="MotDePasse (sinon = Access Key)" />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Requis par WSRelevePda / WSParametragePda (erreur W1035 = login/mot de passe incorrects).
+          </p>
         </div>
       </div>
       <div className="flex gap-2">

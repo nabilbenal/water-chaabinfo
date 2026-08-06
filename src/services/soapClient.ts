@@ -14,6 +14,10 @@ export interface SoapConfig {
   clientId: string;
   /** Clé d'accès (mot de passe) */
   accessKey: string;
+  /** Login applicatif du releveur (AuthentificationBeanIn.NomUtilisateur) */
+  username?: string;
+  /** Mot de passe applicatif du releveur (AuthentificationBeanIn.MotDePasse) */
+  password?: string;
 }
 
 const STORAGE_KEY = 'soap-config';
@@ -36,6 +40,8 @@ export const SOAP_ENV_DEFAULTS = {
   wsdlUrl: (import.meta.env.VITE_SOAP_WSDL_URL as string | undefined) || '',
   clientId: (import.meta.env.VITE_SOAP_CLIENT_ID as string | undefined) || '',
   accessKey: (import.meta.env.VITE_SOAP_ACCESS_KEY as string | undefined) || '',
+  username: (import.meta.env.VITE_SOAP_USERNAME as string | undefined) || '',
+  password: (import.meta.env.VITE_SOAP_PASSWORD as string | undefined) || '',
 } as const;
 
 /** Retourne l'URL du WSDL (par défaut WSAcces.asmx?wsdl sur la base) */
@@ -65,6 +71,8 @@ export function getSoapConfig(): SoapConfig | null {
       serverUrl: SOAP_ENV_DEFAULTS.baseUrl,
       clientId: SOAP_ENV_DEFAULTS.clientId,
       accessKey: SOAP_ENV_DEFAULTS.accessKey,
+      username: SOAP_ENV_DEFAULTS.username,
+      password: SOAP_ENV_DEFAULTS.password,
     };
     return cachedConfig;
   }
@@ -372,6 +380,25 @@ export function setConversationId(id: string): void {
   localStorage.setItem(CONVERSATION_KEY, id);
 }
 
+/**
+ * Bloc d'authentification commun à tous les beanIn des services PDA.
+ * Structure imposée par le WSDL (AbstractPdaBeanIn) :
+ *   ConversationId + Securite/Token + AuthentificationBeanIn(NomUtilisateur, MotDePasse)
+ */
+export function buildBeanInAuth(token: string): string {
+  const cfg = getSoapConfig();
+  const user = cfg?.username || cfg?.clientId || '';
+  const pwd = cfg?.password || cfg?.accessKey || '';
+  return `<web:ConversationId>${escapeXml(getConversationId())}</web:ConversationId>
+        <web:Securite>
+          <web:Token>${escapeXml(token)}</web:Token>
+        </web:Securite>
+        <web:AuthentificationBeanIn>
+          <web:NomUtilisateur>${escapeXml(user)}</web:NomUtilisateur>
+          <web:MotDePasse>${escapeXml(pwd)}</web:MotDePasse>
+        </web:AuthentificationBeanIn>`;
+}
+
 // ─── GenerateToken ──────────────────────────────────────────────
 export async function generateToken(config?: SoapConfig): Promise<string> {
   const cfg = config || getSoapConfig();
@@ -468,7 +495,7 @@ export async function authenticatedSoapRequest(
   const result = await soapRequest(endpoint, soapAction, body, cfg);
 
   // If token expired, retry once with fresh token
-  if (result.status === 'ERROR' && (result.code === 'A0001' || result.code === 'A0002')) {
+  if (result.status === 'ERROR' && (result.code === 'A0001' || result.code === 'A0002' || result.code === 'A1003')) {
     cachedToken = null;
     localStorage.removeItem(TOKEN_KEY);
     const newToken = await generateToken();
@@ -588,7 +615,7 @@ export async function soapTourneeEnCours(numTerminal: string): Promise<string> {
     `${NAMESPACE}TourneeEnCours`,
     (token) => `<web:TourneeEnCours>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
         <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
       </web:beanIn>
     </web:TourneeEnCours>`
@@ -606,7 +633,7 @@ export async function soapListeReleves(numTerminal: string, numTournee: string):
     `${NAMESPACE}ListeReleves`,
     (token) => `<web:ListeReleves>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
         <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
         <web:NumeroTournee>${escapeXml(numTournee)}</web:NumeroTournee>
       </web:beanIn>
@@ -625,7 +652,7 @@ export async function soapValideChargement(numTerminal: string): Promise<void> {
     `${NAMESPACE}ValideChargement`,
     (token) => `<web:ValideChargement>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
         <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
       </web:beanIn>
     </web:ValideChargement>`
@@ -713,7 +740,7 @@ export async function soapDechargementReleves(
     `${NAMESPACE}DechargementReleves`,
     (token) => `<web:DechargementReleves>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
         <web:NumeroTerminalPortable>${escapeXml(numTerminal)}</web:NumeroTerminalPortable>
         <web:Releves>
           ${relevesXml}
@@ -946,7 +973,7 @@ export async function soapRecupererCellules(): Promise<CelluleParam[]> {
     `${NAMESPACE}RecupererParametrageCellules`,
     (token) => `<web:RecupererParametrageCellules>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
       </web:beanIn>
     </web:RecupererParametrageCellules>`
   );
@@ -963,7 +990,7 @@ export async function soapRecupererFamillesIntervention(): Promise<FamilleInterv
     `${NAMESPACE}RecupererParametrageFamillesIntervention`,
     (token) => `<web:RecupererParametrageFamillesIntervention>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
       </web:beanIn>
     </web:RecupererParametrageFamillesIntervention>`
   );
@@ -980,7 +1007,7 @@ export async function soapRecupererOriginesIntervention(): Promise<OrigineInterv
     `${NAMESPACE}RecupererParametrageOriginesIntervention`,
     (token) => `<web:RecupererParametrageOriginesIntervention>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
       </web:beanIn>
     </web:RecupererParametrageOriginesIntervention>`
   );
@@ -997,7 +1024,7 @@ export async function soapRecupererTypesMoyen(): Promise<TypeMoyen[]> {
     `${NAMESPACE}RecupererParametrageTypesMoyen`,
     (token) => `<web:RecupererParametrageTypesMoyen>
       <web:beanIn>
-        <web:ConversationId>${escapeXml(token)}</web:ConversationId>
+        ${buildBeanInAuth(token)}
       </web:beanIn>
     </web:RecupererParametrageTypesMoyen>`
   );
