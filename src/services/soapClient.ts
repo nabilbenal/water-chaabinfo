@@ -40,6 +40,8 @@ export const SOAP_ENV_DEFAULTS = {
   wsdlUrl: (import.meta.env.VITE_SOAP_WSDL_URL as string | undefined) || '',
   clientId: (import.meta.env.VITE_SOAP_CLIENT_ID as string | undefined) || '',
   accessKey: (import.meta.env.VITE_SOAP_ACCESS_KEY as string | undefined) || '',
+  username: (import.meta.env.VITE_SOAP_USERNAME as string | undefined) || '',
+  password: (import.meta.env.VITE_SOAP_PASSWORD as string | undefined) || '',
 } as const;
 
 /** Retourne l'URL du WSDL (par défaut WSAcces.asmx?wsdl sur la base) */
@@ -69,6 +71,8 @@ export function getSoapConfig(): SoapConfig | null {
       serverUrl: SOAP_ENV_DEFAULTS.baseUrl,
       clientId: SOAP_ENV_DEFAULTS.clientId,
       accessKey: SOAP_ENV_DEFAULTS.accessKey,
+      username: SOAP_ENV_DEFAULTS.username,
+      password: SOAP_ENV_DEFAULTS.password,
     };
     return cachedConfig;
   }
@@ -376,6 +380,25 @@ export function setConversationId(id: string): void {
   localStorage.setItem(CONVERSATION_KEY, id);
 }
 
+/**
+ * Bloc d'authentification commun à tous les beanIn des services PDA.
+ * Structure imposée par le WSDL (AbstractPdaBeanIn) :
+ *   ConversationId + Securite/Token + AuthentificationBeanIn(NomUtilisateur, MotDePasse)
+ */
+export function buildBeanInAuth(token: string): string {
+  const cfg = getSoapConfig();
+  const user = cfg?.username || cfg?.clientId || '';
+  const pwd = cfg?.password || cfg?.accessKey || '';
+  return `<web:ConversationId>${escapeXml(getConversationId())}</web:ConversationId>
+        <web:Securite>
+          <web:Token>${escapeXml(token)}</web:Token>
+        </web:Securite>
+        <web:AuthentificationBeanIn>
+          <web:NomUtilisateur>${escapeXml(user)}</web:NomUtilisateur>
+          <web:MotDePasse>${escapeXml(pwd)}</web:MotDePasse>
+        </web:AuthentificationBeanIn>`;
+}
+
 // ─── GenerateToken ──────────────────────────────────────────────
 export async function generateToken(config?: SoapConfig): Promise<string> {
   const cfg = config || getSoapConfig();
@@ -472,7 +495,7 @@ export async function authenticatedSoapRequest(
   const result = await soapRequest(endpoint, soapAction, body, cfg);
 
   // If token expired, retry once with fresh token
-  if (result.status === 'ERROR' && (result.code === 'A0001' || result.code === 'A0002')) {
+  if (result.status === 'ERROR' && (result.code === 'A0001' || result.code === 'A0002' || result.code === 'A1003')) {
     cachedToken = null;
     localStorage.removeItem(TOKEN_KEY);
     const newToken = await generateToken();
