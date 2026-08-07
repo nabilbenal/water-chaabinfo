@@ -14,10 +14,12 @@ export interface SoapConfig {
   clientId: string;
   /** Clé d'accès (mot de passe) */
   accessKey: string;
-  /** Login applicatif du releveur (AuthentificationBeanIn.NomUtilisateur) */
+  /** Login applicatif du releveur = RLR.COD_RLR (AuthentificationBeanIn.NomUtilisateur) */
   username?: string;
-  /** Mot de passe applicatif du releveur (AuthentificationBeanIn.MotDePasse) */
+  /** Mot de passe applicatif du releveur = RLR.PSW_RLR (AuthentificationBeanIn.MotDePasse) */
   password?: string;
+  /** Numéro du terminal portable = RLR.NUM_TP_RLR (ex: 611) */
+  numTerminal?: string;
 }
 
 const STORAGE_KEY = 'soap-config';
@@ -40,9 +42,17 @@ export const SOAP_ENV_DEFAULTS = {
   wsdlUrl: (import.meta.env.VITE_SOAP_WSDL_URL as string | undefined) || '',
   clientId: (import.meta.env.VITE_SOAP_CLIENT_ID as string | undefined) || 'PDA',
   accessKey: (import.meta.env.VITE_SOAP_ACCESS_KEY as string | undefined) || '1PDA2somei',
-  username: (import.meta.env.VITE_SOAP_USERNAME as string | undefined) || 'PDA',
-  password: (import.meta.env.VITE_SOAP_PASSWORD as string | undefined) || '1PDA2somei',
+  // Identifiants releveur issus de la table RLR (COD_RLR / PSW_RLR)
+  username: (import.meta.env.VITE_SOAP_USERNAME as string | undefined) || 'MENH',
+  password: (import.meta.env.VITE_SOAP_PASSWORD as string | undefined) || 'MENH',
+  // Numéro du terminal portable (RLR.NUM_TP_RLR)
+  numTerminal: (import.meta.env.VITE_SOAP_NUM_TERMINAL as string | undefined) || '611',
 } as const;
+
+/** Numéro de terminal portable courant (config > env > 611) */
+export function getNumTerminal(): string {
+  return getSoapConfig()?.numTerminal || SOAP_ENV_DEFAULTS.numTerminal;
+}
 
 /** Retourne l'URL du WSDL (par défaut WSAcces.asmx?wsdl sur la base) */
 export function getWsdlUrl(baseUrl?: string): string {
@@ -73,6 +83,7 @@ export function getSoapConfig(): SoapConfig | null {
       accessKey: SOAP_ENV_DEFAULTS.accessKey,
       username: SOAP_ENV_DEFAULTS.username,
       password: SOAP_ENV_DEFAULTS.password,
+      numTerminal: SOAP_ENV_DEFAULTS.numTerminal,
     };
     return cachedConfig;
   }
