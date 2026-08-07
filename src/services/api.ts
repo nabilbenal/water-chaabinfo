@@ -170,8 +170,8 @@ export async function apiLoadData(tourneeId?: string, numTerminal?: string): Pro
   }
 
   if (currentMode === 'soap') {
-    const { soapTourneeEnCours, soapListeReleves, soapValideChargement, parseListeRelevesResponse, soapLoadAllParametrage } = await import('./soapClient');
-    const terminal = numTerminal || 'PDA001';
+    const { getNumTerminal, soapTourneeEnCours, soapListeReleves, soapValideChargement, parseListeRelevesResponse, soapLoadAllParametrage } = await import('./soapClient');
+    const terminal = numTerminal || getNumTerminal();
     
     // 1. Get current tournee if not provided
     let tournee = tourneeId || '';
@@ -228,8 +228,8 @@ export async function apiUnloadData(
   }
 
   if (currentMode === 'soap') {
-    const { soapDechargementReleves, toOracleDate } = await import('./soapClient');
-    const terminal = numTerminal || 'PDA001';
+    const { soapDechargementReleves, toOracleDate, getNumTerminal } = await import('./soapClient');
+    const terminal = numTerminal || getNumTerminal();
 
     // Map ReleveConsommation to RelevePdaOut format (schéma SOMEI réel)
     const relevesOut: import('./soapClient').RelevePdaOut[] = releves.map((r, i) => {

@@ -327,22 +327,23 @@ function SoapConfigPanel() {
   const [accessKey, setAccessKey] = useState(existing?.accessKey || SOAP_ENV_DEFAULTS.accessKey || '');
   const [username, setUsername] = useState(existing?.username || SOAP_ENV_DEFAULTS.username || '');
   const [password, setPassword] = useState(existing?.password || SOAP_ENV_DEFAULTS.password || '');
+  const [numTerminal, setNumTerminal] = useState(existing?.numTerminal || SOAP_ENV_DEFAULTS.numTerminal || '');
   const [testing, setTesting] = useState(false);
   const wsdlUrl = getWsdlUrl(serverUrl);
   const hasEnvDefaults = Boolean(SOAP_ENV_DEFAULTS.baseUrl);
 
   const handleSave = () => {
-    saveSoapConfig({ serverUrl, clientId, accessKey, username, password });
+    saveSoapConfig({ serverUrl, clientId, accessKey, username, password, numTerminal });
     toast.success('Configuration SOAP sauvegardée');
   };
 
   const handleTest = async () => {
     setTesting(true);
     try {
-      const result = await testSoapConnection({ serverUrl, clientId, accessKey, username, password });
+      const result = await testSoapConnection({ serverUrl, clientId, accessKey, username, password, numTerminal });
       if (result.success) {
         toast.success('Connexion SOAP réussie', { description: result.message });
-        saveSoapConfig({ serverUrl, clientId, accessKey, username, password });
+        saveSoapConfig({ serverUrl, clientId, accessKey, username, password, numTerminal });
       } else {
         toast.error('Échec connexion SOAP', { description: result.message });
       }
@@ -453,6 +454,17 @@ function SoapConfigPanel() {
             placeholder="MotDePasse (sinon = Access Key)" />
           <p className="text-[10px] text-muted-foreground mt-1">
             Requis par WSRelevePda / WSParametragePda (erreur W1035 = login/mot de passe incorrects).
+            Correspond à RLR.COD_RLR / RLR.PSW_RLR (ex. MENH / MENH).
+          </p>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Numéro terminal portable (NUM_TP_RLR)</label>
+          <input value={numTerminal} onChange={e => setNumTerminal(e.target.value.replace(/\D/g, ''))}
+            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs font-mono focus:ring-2 focus:ring-primary/30"
+            placeholder="611" />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Utilisé pour TourneeEnCours / ListeReleves / Déchargement. Le serveur refuse le chargement si
+            RLR.IND_ETA_TP_RLR est déjà à « C » (terminal chargé) : décharger la tournée précédente d'abord.
           </p>
         </div>
       </div>
