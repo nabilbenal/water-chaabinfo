@@ -83,6 +83,7 @@ export function getSoapConfig(): SoapConfig | null {
       accessKey: SOAP_ENV_DEFAULTS.accessKey,
       username: SOAP_ENV_DEFAULTS.username,
       password: SOAP_ENV_DEFAULTS.password,
+      numTerminal: SOAP_ENV_DEFAULTS.numTerminal,
     };
     return cachedConfig;
   }
