@@ -14,10 +14,12 @@ export interface SoapConfig {
   clientId: string;
   /** Clé d'accès (mot de passe) */
   accessKey: string;
-  /** Login applicatif du releveur (AuthentificationBeanIn.NomUtilisateur) */
+  /** Login applicatif du releveur = RLR.COD_RLR (AuthentificationBeanIn.NomUtilisateur) */
   username?: string;
-  /** Mot de passe applicatif du releveur (AuthentificationBeanIn.MotDePasse) */
+  /** Mot de passe applicatif du releveur = RLR.PSW_RLR (AuthentificationBeanIn.MotDePasse) */
   password?: string;
+  /** Numéro du terminal portable = RLR.NUM_TP_RLR (ex: 611) */
+  numTerminal?: string;
 }
 
 const STORAGE_KEY = 'soap-config';
