@@ -38,10 +38,10 @@ let cachedToken: { value: string; expiresAt: number } | null = null;
 export const SOAP_ENV_DEFAULTS = {
   baseUrl: (import.meta.env.VITE_SOAP_BASE_URL as string | undefined)?.replace(/\/+$/, '') || '',
   wsdlUrl: (import.meta.env.VITE_SOAP_WSDL_URL as string | undefined) || '',
-  clientId: (import.meta.env.VITE_SOAP_CLIENT_ID as string | undefined) || '',
-  accessKey: (import.meta.env.VITE_SOAP_ACCESS_KEY as string | undefined) || '',
-  username: (import.meta.env.VITE_SOAP_USERNAME as string | undefined) || '',
-  password: (import.meta.env.VITE_SOAP_PASSWORD as string | undefined) || '',
+  clientId: (import.meta.env.VITE_SOAP_CLIENT_ID as string | undefined) || 'PDA',
+  accessKey: (import.meta.env.VITE_SOAP_ACCESS_KEY as string | undefined) || '1PDA2somei',
+  username: (import.meta.env.VITE_SOAP_USERNAME as string | undefined) || 'PDA',
+  password: (import.meta.env.VITE_SOAP_PASSWORD as string | undefined) || '1PDA2somei',
 } as const;
 
 /** Retourne l'URL du WSDL (par défaut WSAcces.asmx?wsdl sur la base) */
