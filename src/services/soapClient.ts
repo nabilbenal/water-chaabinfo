@@ -1119,14 +1119,23 @@ export async function soapRecupererTypesMoyen(): Promise<TypeMoyen[]> {
 
 /** Charge tous les paramétrages PDA en parallèle */
 export async function soapLoadAllParametrage(): Promise<ParametragePda> {
+  const skip = (e: unknown) => {
+    if (e instanceof SoapActionUnsupportedError) {
+      console.info(`[SOAP] ${e.message} — paramétrage ignoré.`);
+    } else {
+      console.warn('[SOAP] paramétrage indisponible:', e);
+    }
+    return [];
+  };
   const [cellules, famillesIntervention, originesIntervention, typesMoyen] = await Promise.all([
-    soapRecupererCellules().catch(() => []),
-    soapRecupererFamillesIntervention().catch(() => []),
-    soapRecupererOriginesIntervention().catch(() => []),
-    soapRecupererTypesMoyen().catch(() => []),
+    soapRecupererCellules().catch(skip),
+    soapRecupererFamillesIntervention().catch(skip),
+    soapRecupererOriginesIntervention().catch(skip),
+    soapRecupererTypesMoyen().catch(skip),
   ]);
   return { cellules, famillesIntervention, originesIntervention, typesMoyen };
 }
+
 
 // ─── Utility exports ────────────────────────────────────────────
 export { escapeXml, buildSoapEnvelope, extractTagValue, extractAllTags };
