@@ -312,6 +312,59 @@ async function sendSoap(
 }
 
 
+/**
+ * Certaines opérations décrites dans la documentation SOMEI ne sont pas déployées
+ * sur toutes les instances (ex. le paramétrage « intervention » absent de
+ * WSParametragePda en recette). Le serveur répond alors HTTP 500 avec
+ * « action ... was not recognized » / « did not recognize the value of HTTP Header SOAPAction ».
+ * On découvre donc les opérations réellement exposées par le WSDL et on met en cache
+ * les actions non supportées pour ne plus les rappeler (ni tenter le repli SOAP 1.2).
+ */
+export class SoapActionUnsupportedError extends Error {
+  constructor(public soapAction: string, public endpoint: string) {
+    super(`Opération non exposée par ce serveur : ${soapAction.split('/').pop()} (${endpoint})`);
+    this.name = 'SoapActionUnsupportedError';
+  }
+}
+
+const unsupportedActions = new Set<string>();
+const wsdlOperationsCache = new Map<string, Set<string> | null>();
+
+function isUnsupportedActionFault(xml: string): boolean {
+  return /was not recognized|did not recognize the value of HTTP Header SOAPAction/i.test(xml);
+}
+
+async function httpGetText(url: string, signal?: AbortSignal): Promise<string> {
+  if (Capacitor.isNativePlatform()) {
+    const res = await CapacitorHttp.request({ url, method: 'GET', responseType: 'text', connectTimeout: 15000, readTimeout: 15000 });
+    return typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+  }
+  const res = await fetch(url, { method: 'GET', signal });
+  return await res.text();
+}
+
+/** Liste les opérations déclarées dans le WSDL d'un endpoint (null si WSDL illisible). */
+export async function getWsdlOperations(url: string): Promise<Set<string> | null> {
+  if (wsdlOperationsCache.has(url)) return wsdlOperationsCache.get(url) ?? null;
+  let ops: Set<string> | null = null;
+  try {
+    const wsdl = await httpGetText(`${url}?wsdl`);
+    const found = new Set<string>();
+    const re = /soap(?:12)?:operation[^>]*soapAction\s*=\s*"([^"]*)"/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(wsdl)) !== null) if (m[1]) found.add(m[1]);
+    if (found.size === 0) {
+      const re2 = /<(?:\w+:)?operation\s+name="([^"]+)"/gi;
+      while ((m = re2.exec(wsdl)) !== null) found.add(`${NAMESPACE}${m[1]}`);
+    }
+    ops = found.size > 0 ? found : null;
+  } catch {
+    ops = null;
+  }
+  wsdlOperationsCache.set(url, ops);
+  return ops;
+}
+
 async function soapRequest(
   endpoint: string,
   soapAction: string,
@@ -323,21 +376,40 @@ async function soapRequest(
 
   try {
     const url = buildEndpointUrl(config.serverUrl, endpoint);
+    const key = `${url}#${soapAction}`;
+    if (unsupportedActions.has(key)) throw new SoapActionUnsupportedError(soapAction, endpoint);
+
+    // Vérification préalable du WSDL : évite les 500 inutiles sur les opérations absentes
+    const ops = await getWsdlOperations(url);
+    if (ops && !ops.has(soapAction)) {
+      unsupportedActions.add(key);
+      throw new SoapActionUnsupportedError(soapAction, endpoint);
+    }
 
     // Tentative SOAP 1.1 (format natif des services ASMX SOMEI), repli en 1.2
     let { status, xml } = await sendSoap(url, soapAction, body, 11, controller.signal, endpoint);
+    if (status === 500 && isUnsupportedActionFault(xml)) {
+      unsupportedActions.add(key);
+      throw new SoapActionUnsupportedError(soapAction, endpoint);
+    }
     if (status === 415 || status === 500) {
       try {
         const retry = await sendSoap(url, soapAction, body, 12, controller.signal, endpoint);
+        if (retry.status === 500 && isUnsupportedActionFault(retry.xml)) {
+          unsupportedActions.add(key);
+          throw new SoapActionUnsupportedError(soapAction, endpoint);
+        }
 
         if (retry.status >= 200 && retry.status < 300) {
           status = retry.status;
           xml = retry.xml;
         }
-      } catch {
+      } catch (e) {
+        if (e instanceof SoapActionUnsupportedError) throw e;
         /* on conserve l'erreur SOAP 1.1 */
       }
     }
+
 
     if (status < 200 || status >= 300) {
       const fault = extractSoapFault(xml);
